@@ -30,6 +30,29 @@ This guide documents common issues and solutions discovered during the developme
 
 **Solution**: Continue using the `--resume` flag with the original session ID. The conversation context will be preserved.
 
+### 4. Claude CLI Timeout Errors
+
+**Problem**: Getting timeout errors like "Claude CLI timed out after 120 seconds" especially with Claude Opus 4.
+
+**Root Cause**: Claude Opus 4 can use extended thinking mode for complex queries, which may take longer than the default 2-minute timeout.
+
+**Solutions**:
+1. **Increase timeout for complex tasks**:
+   ```typescript
+   // 5-minute timeout for complex reasoning
+   const claude = createClaudeCode({ timeoutMs: 300000 });
+   
+   // Or per-model override
+   const model = claude('opus', { timeoutMs: 600000 }); // 10 minutes
+   ```
+
+2. **Use appropriate timeouts by task complexity**:
+   - Simple queries: Default 2 minutes is sufficient
+   - Complex reasoning: 5-10 minutes recommended
+   - Maximum allowed: 10 minutes (matches Anthropic's API limit)
+
+3. **For very long tasks**, consider breaking them into smaller chunks or using streaming approaches.
+
 ## Debugging Commands
 
 ### Check CLI Installation
@@ -55,6 +78,15 @@ claude -p "My name is Alice" --print --output-format json
 
 # Resume session
 claude --resume <session_id> -p "What is my name?" --print --output-format json
+```
+
+### Test Timeout Configuration
+```bash
+# Run the timeout configuration example
+npx tsx examples/timeout-config.ts
+
+# Or test a specific timeout manually with Claude CLI
+time claude -p "Explain quantum computing in detail" --print --output-format json
 ```
 
 ## Implementation Decisions

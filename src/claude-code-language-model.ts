@@ -11,6 +11,7 @@ import { ClaudeCodeCLI } from './claude-code-cli.js';
 import { ClaudeCodeCLISync } from './claude-code-cli-sync.js';
 import { ClaudeCodeCLIPty } from './claude-code-cli-pty.js';
 import type { ClaudeCodeModelConfig } from './types.js';
+import { isAssistantEvent, isResultEvent, isSystemEvent, isErrorEvent } from './types.js';
 import { ClaudeCodeError, isAuthenticationError } from './errors.js';
 
 export class ClaudeCodeLanguageModel implements LanguageModelV1 {
@@ -171,7 +172,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         stream: new ReadableStream({
           start: async (controller) => {
             try {
-              const eventStream = this.cliPty!.stream(
+              if (!this.cliPty) {
+                throw new ClaudeCodeError({
+                  message: 'PTY CLI instance not available',
+                  code: 'PTY_UNAVAILABLE',
+                });
+              }
+              
+              const eventStream = this.cliPty.stream(
                 promptText,
                 { ...this.config, sessionId: this.sessionId },
                 { signal: options.abortSignal }
@@ -179,10 +187,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
 
               // let fullText = '';
               for await (const event of eventStream) {
-                if (event.type === 'system' && (event as any).session_id && !this.sessionId) {
-                  this.sessionId = (event as any).session_id;
-                } else if (event.type === 'assistant' && (event as any).message) {
-                  const messageContent = (event as any).message.content?.[0]?.text;
+                if (isSystemEvent(event) && event.session_id && !this.sessionId) {
+                  this.sessionId = event.session_id;
+                } else if (isAssistantEvent(event) && event.message) {
+                  const messageContent = event.message.content?.[0]?.text;
                   if (messageContent) {
                     // For true streaming, we'd need to track deltas
                     // For now, send the full text as one chunk
@@ -191,13 +199,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                       textDelta: messageContent,
                     } as LanguageModelV1StreamPart);
                   }
-                } else if (event.type === 'result') {
-                  if ((event as any).session_id) {
-                    this.sessionId = (event as any).session_id;
+                } else if (isResultEvent(event)) {
+                  if (event.session_id) {
+                    this.sessionId = event.session_id;
                   }
                   
                   // Extract token usage from the result event
-                  const usage = (event as any).usage || {};
+                  const usage = event.usage || {};
                   const promptTokens = (usage.input_tokens || 0) + 
                                       (usage.cache_creation_input_tokens || 0) + 
                                       (usage.cache_read_input_tokens || 0);
@@ -213,8 +221,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                     providerMetadata: {
                       'claude-code': {
                         ...(this.sessionId && { sessionId: this.sessionId }),
-                        ...((event as any).cost_usd && { costUsd: (event as any).cost_usd }),
-                        ...((event as any).duration_ms && { durationMs: (event as any).duration_ms }),
+                        ...(event.cost_usd && { costUsd: event.cost_usd }),
+                        ...(event.duration_ms && { durationMs: event.duration_ms }),
                         ...(usage && { 
                           rawUsage: {
                             inputTokens: usage.input_tokens,
@@ -226,10 +234,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                       },
                     },
                   } as LanguageModelV1StreamPart);
-                } else if ((event as any).is_error) {
+                } else if (isErrorEvent(event)) {
                   controller.error(new ClaudeCodeError({
-                    message: (event as any).error || 'Claude CLI error',
-                    code: 'CLI_ERROR',
+                    message: event.error.message || 'Claude CLI error',
+                    code: event.error.code || 'CLI_ERROR',
                   }));
                   return;
                 }

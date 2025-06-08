@@ -160,12 +160,44 @@ const claude = createClaudeCode({
   cliPath: '/usr/local/bin/claude',
   skipPermissions: false,
   maxConcurrentProcesses: 2,
+  timeoutMs: 180000, // 3 minutes
 });
 
 const { text } = await generateText({
   model: claude('opus'),
   prompt: 'Hello, Claude!',
 });
+```
+
+### Timeout Configuration
+
+The provider includes configurable timeouts to handle Claude Opus 4's extended thinking capabilities:
+
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+// Default: 2-minute timeout for most use cases
+const claude = createClaudeCode();
+
+// Custom timeout at provider level
+const claude5min = createClaudeCode({
+  timeoutMs: 300000, // 5 minutes for complex tasks
+});
+
+// Per-model timeout override
+const { text } = await generateText({
+  model: claude5min('opus', { timeoutMs: 600000 }), // Override to 10 minutes
+  prompt: 'Analyze this complex dataset...',
+});
+```
+
+**Timeout Guidelines:**
+- **Default (2 minutes)**: Good for most queries including Opus 4's quick responses
+- **5-10 minutes**: Recommended for complex reasoning tasks with Opus 4's extended thinking
+- **Maximum (10 minutes)**: Matches Anthropic's API timeout limit
+- **Minimum (1 second)**: For testing or very fast responses
+
+**Important**: For tasks expected to take longer than 10 minutes, consider breaking them into smaller chunks or using streaming approaches.
 ```
 
 ## Configuration Options
@@ -176,6 +208,8 @@ const { text } = await generateText({
 | `skipPermissions` | `boolean` | `true` | Whether to add `--dangerously-skip-permissions` flag |
 | `sessionId` | `string` | `undefined` | Resume a previous conversation session |
 | `enablePtyStreaming` | `boolean` | `false` | Enable real streaming via pseudo-terminal (requires node-pty) |
+| `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
+| `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
 
 ## Model Support
 

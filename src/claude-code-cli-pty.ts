@@ -1,5 +1,10 @@
 import * as pty from 'node-pty';
-import type { ClaudeCodeEvent, ClaudeCodeModelConfig } from './types.js';
+import type { 
+  ClaudeCodeEvent, 
+  ClaudeCodeModelConfig,
+  ClaudeCodeSystemEvent,
+  ClaudeCodeResultEvent
+} from './types.js';
 import { ClaudeCodeError } from './errors.js';
 
 export class ClaudeCodeCLIPty {
@@ -17,7 +22,7 @@ export class ClaudeCodeCLIPty {
       cols: 80,
       rows: 30,
       cwd: process.cwd(),
-      env: process.env as any,
+      env: process.env as { [key: string]: string | undefined },
     });
 
     let buffer = '';
@@ -62,7 +67,7 @@ export class ClaudeCodeCLIPty {
                     type: 'system',
                     subtype: 'init',
                     session_id: parsed.session_id,
-                  } as any);
+                  } as ClaudeCodeSystemEvent);
                 } else if (parsed.type === 'assistant') {
                   events.push({
                     type: 'assistant',
@@ -71,12 +76,17 @@ export class ClaudeCodeCLIPty {
                 } else if (parsed.type === 'result') {
                   events.push({
                     type: 'result',
-                    subtype: parsed.subtype,
-                    result: parsed.result,
-                    session_id: parsed.session_id,
-                    is_error: parsed.is_error,
-                    error: parsed.error,
-                  } as any);
+                    subtype: parsed.subtype || '',
+                    cost_usd: parsed.cost_usd || 0,
+                    is_error: parsed.is_error || false,
+                    duration_ms: parsed.duration_ms || 0,
+                    duration_api_ms: parsed.duration_api_ms || 0,
+                    num_turns: parsed.num_turns || 1,
+                    result: parsed.result || '',
+                    session_id: parsed.session_id || '',
+                    total_cost: parsed.total_cost || 0,
+                    usage: parsed.usage || {},
+                  } as ClaudeCodeResultEvent);
                 }
               } catch {
                 // Continue parsing
@@ -105,13 +115,15 @@ export class ClaudeCodeCLIPty {
       });
 
       // Handle timeout
+      const timeoutMs = config.timeoutMs || 120000;
       setTimeout(() => {
         cleanup();
+        const timeoutSeconds = Math.round(timeoutMs / 1000);
         reject(new ClaudeCodeError({
-          message: 'Claude CLI timed out',
+          message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
           code: 'TIMEOUT',
         }));
-      }, 30000);
+      }, timeoutMs);
     });
 
     try {

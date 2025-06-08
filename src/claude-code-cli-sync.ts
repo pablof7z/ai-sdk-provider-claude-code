@@ -14,7 +14,7 @@ export class ClaudeCodeCLISync {
     try {
       const stdout = execSync(command, {
         encoding: 'utf8',
-        timeout: 30000, // 30 second timeout
+        timeout: config.timeoutMs || 120000,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       
@@ -23,20 +23,36 @@ export class ClaudeCodeCLISync {
         stderr: '',
         exitCode: 0,
       };
-    } catch (error: any) {
-      if (error.code === 'ETIMEDOUT') {
-        throw new ClaudeCodeError({
-          message: 'Claude CLI timed out after 30 seconds',
-          code: 'TIMEOUT',
-          promptExcerpt: prompt.slice(0, 100),
-        });
+    } catch (error) {
+      // Type guard for execSync error
+      const isExecError = (err: unknown): err is Error & {
+        code?: string;
+        stdout?: string | Buffer;
+        stderr?: string | Buffer;
+        status?: number;
+      } => {
+        return err instanceof Error;
+      };
+
+      if (isExecError(error)) {
+        if (error.code === 'ETIMEDOUT') {
+          const timeoutSeconds = Math.round((config.timeoutMs || 120000) / 1000);
+          throw new ClaudeCodeError({
+            message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
+            code: 'TIMEOUT',
+            promptExcerpt: prompt.slice(0, 100),
+          });
+        }
+        
+        return {
+          stdout: typeof error.stdout === 'string' ? error.stdout : error.stdout?.toString() || '',
+          stderr: typeof error.stderr === 'string' ? error.stderr : error.stderr?.toString() || '',
+          exitCode: error.status || 1,
+        };
       }
       
-      return {
-        stdout: error.stdout || '',
-        stderr: error.stderr || '',
-        exitCode: error.status || 1,
-      };
+      // Fallback for unknown errors
+      throw error;
     }
   }
 

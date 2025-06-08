@@ -11,6 +11,7 @@ examples/
 ├── streaming.ts              # Streaming examples
 ├── conversation-history.ts   # Multi-turn conversations
 ├── custom-config.ts          # Configuration options
+├── timeout-config.ts         # Timeout configuration examples
 ├── test-session.ts           # Session management
 ├── integration-test-basic.ts # Comprehensive tests
 └── check-cli.ts              # CLI verification utility
@@ -59,7 +60,14 @@ npx tsx examples/custom-config.ts
 ```
 **Why included**: Shows how to customize the provider for different environments.
 
-### 5. Session Management (`test-session.ts`)
+### 5. Timeout Configuration (`timeout-config.ts`)
+Demonstrates configurable timeout settings for handling Claude Opus 4's extended thinking.
+```bash
+npx tsx examples/timeout-config.ts
+```
+**Why included**: Shows how to configure timeouts for different use cases and Claude models.
+
+### 6. Session Management (`test-session.ts`)
 Demonstrates experimental session-based conversation continuity.
 ```bash
 npx tsx examples/test-session.ts
