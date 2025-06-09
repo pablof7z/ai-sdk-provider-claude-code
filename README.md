@@ -309,6 +309,30 @@ console.log(experimental_providerMetadata);
 - **For Pro/Max subscribers**: This is informational only - usage is covered by your monthly subscription
 - **For API key users**: This represents actual charges that will be billed to your account
 
+## Limitations
+
+### Object Generation Not Supported
+
+The Claude Code CLI does not support structured output or object generation. Attempting to use `generateObject()` or `streamObject()` will throw an error:
+
+```typescript
+import { generateObject } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+import { z } from 'zod';
+
+// This will throw UnsupportedFunctionalityError
+await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    name: z.string(),
+    age: z.number(),
+  }),
+  prompt: 'Generate a person',
+});
+```
+
+This is a limitation of the Claude Code CLI interface, which doesn't provide JSON mode or structured output capabilities.
+
 ## Error Handling
 
 ```typescript

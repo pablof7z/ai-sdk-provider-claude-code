@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeCodeLanguageModel } from './claude-code-language-model';
 import { ClaudeCodeCLI } from './claude-code-cli';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
+import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
 
 vi.mock('./claude-code-cli');
 
@@ -141,6 +142,39 @@ describe('ClaudeCodeLanguageModel', () => {
         expect.any(Object)
       );
     });
+
+    it('should throw error for object-json mode', async () => {
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+        mode: {
+          type: 'object-json',
+          schema: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(UnsupportedFunctionalityError);
+      await expect(model.doGenerate(options)).rejects.toThrow("'object-json mode' functionality not supported");
+    });
+
+    it('should throw error for object-tool mode', async () => {
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Use tool' }] }],
+        mode: {
+          type: 'object-tool',
+          tool: {
+            type: 'function',
+            name: 'getTool',
+            description: 'A test tool',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(UnsupportedFunctionalityError);
+      await expect(model.doGenerate(options)).rejects.toThrow("'object-tool mode' functionality not supported");
+    });
   });
 
   describe('doStream', () => {
@@ -215,6 +249,39 @@ describe('ClaudeCodeLanguageModel', () => {
       const reader = result.stream.getReader();
 
       await expect(reader.read()).rejects.toThrow('Stream error');
+    });
+
+    it('should throw error for object-json mode in streaming', async () => {
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+        mode: {
+          type: 'object-json',
+          schema: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doStream(options)).rejects.toThrow(UnsupportedFunctionalityError);
+      await expect(model.doStream(options)).rejects.toThrow("'object-json mode' functionality not supported");
+    });
+
+    it('should throw error for object-tool mode in streaming', async () => {
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Use tool' }] }],
+        mode: {
+          type: 'object-tool',
+          tool: {
+            type: 'function',
+            name: 'getTool', 
+            description: 'A test tool',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doStream(options)).rejects.toThrow(UnsupportedFunctionalityError);
+      await expect(model.doStream(options)).rejects.toThrow("'object-tool mode' functionality not supported");
     });
   });
 
