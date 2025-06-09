@@ -1,90 +1,110 @@
-# AI SDK Provider for Claude Code
+# 🚧 ALPHA: AI SDK Provider for Claude Code
 
-**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the Claude Code CLI. This provider works with both:
-- **Claude Pro/Max subscriptions**: Use your subscription for API-style integrations without separate API keys
-- **API key authentication**: Standard pay-per-token usage with your Anthropic API key
+> **⚠️ Alpha Software**: This project is in active development and seeking feedback from early adopters. Much of the implementation is AI-generated and we welcome refactoring suggestions for improved structure and addressing any noticeable issues.
 
-## Features
+**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the Claude Code CLI. Works with both Claude Pro/Max subscriptions and API key authentication.
 
-- 🚀 Full compatibility with Vercel AI SDK
-- 🔄 Streaming support for real-time responses
-- 💬 Session management for multi-turn conversations
-- 🔐 No API keys required (uses Claude Code OAuth)
-- 📡 Real streaming via PTY (experimental)
-- 🛡️ TypeScript support with full type safety
-- 📊 JSON output format for structured responses
-- 📈 Token usage statistics with detailed breakdowns
-- 🏷️ Rich provider metadata (session IDs, timing, usage)
+## 🚀 Alpha Quick Start
 
-## Project Structure
-
-```
-ai-sdk-provider-claude-code/
-├── src/
-│   ├── index.ts                       # Main exports
-│   ├── claude-code-provider.ts        # Provider factory
-│   ├── claude-code-language-model.ts  # Language model implementation
-│   ├── claude-code-cli.ts             # CLI interaction logic
-│   ├── claude-code-parser.ts          # Response parsing
-│   ├── types.ts                       # TypeScript types
-│   └── errors.ts                      # Error handling
-├── package.json
-├── tsconfig.json
-├── README.md
-└── LICENSE
-```
-
-## Prerequisites
-
-| Requirement                                         | Version      |
-| --------------------------------------------------- | ------------ |
-| Node.js                                             | ≥ 18         |
-| Claude Code CLI (`@anthropic-ai/claude-code`)       | ≥ 2025‑05‑14 |
-| Logged‑in Claude account (run `claude /login` once) |  —           |
-
-1. **Claude Code CLI** installed:
-   ```bash
-   npm install -g @anthropic-ai/claude-code
-   ```
-
-2. **Authenticated Claude Code CLI**:
-   ```bash
-   claude login
-   ```
-   
-   > **Note**: This provider works with both subscription-based and API key authentication:
-   > - **Pro/Max subscribers**: Usage is covered by your monthly subscription with no additional per-token charges
-   > - **API key users**: You will be charged per token according to Anthropic's API pricing
-
-## Installation
-
+### Prerequisites
 ```bash
-npm install ai ai-sdk-provider-claude-code
+# 1. Install Claude Code CLI
+npm install -g @anthropic-ai/claude-code
+
+# 2. Authenticate with Claude
+claude login
 ```
 
-## Usage
+### Installation (Alpha Distribution)
+```bash
+# Install directly from GitHub
+npm install git+https://github.com/ben-vargas/ai-sdk-provider-claude-code.git
+npm install ai
+```
 
-### Basic Example
-
+### Try It Now
 ```typescript
 import { generateText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 
+// Basic text generation
 const { text } = await generateText({
-  model: claudeCode('opus'),
-  prompt: 'Explain quantum computing in simple terms',
+  model: claudeCode('sonnet'),
+  prompt: 'Explain recursion in one sentence',
 });
 
 console.log(text);
 ```
 
-### Streaming Example
+### Test Your Setup
+```bash
+# Verify everything works
+npm run build
+npx tsx examples/check-cli.ts
+npx tsx examples/basic-usage.ts
+```
+
+## 🧪 Alpha Testing & Feedback
+
+**Found an issue?** [Open an issue](https://github.com/ben-vargas/ai-sdk-provider-claude-code/issues)  
+**Have suggestions?** [Start a discussion](https://github.com/ben-vargas/ai-sdk-provider-claude-code/discussions)  
+**Want to contribute?** We're especially interested in:
+- Code structure improvements
+- Performance optimizations
+- Better error handling patterns
+- Additional example use cases
+
+---
+
+## Core Features
+
+- 🚀 Full compatibility with Vercel AI SDK
+- 🔄 Streaming support for real-time responses  
+- 💬 Session management for multi-turn conversations
+- 🔐 No API keys required (uses Claude Code OAuth)
+- 📡 Real streaming via PTY (experimental)
+- 🛡️ TypeScript support with full type safety
+- ⏱️ Configurable timeouts (1s-10min) optimized for Claude Opus 4
+- 📈 Token usage statistics with detailed breakdowns
+- 🏷️ Rich provider metadata (session IDs, timing, costs)
+
+## Model Support
+
+- **`opus`** - Claude 3 Opus (most capable, use with longer timeouts for complex reasoning)
+- **`sonnet`** - Claude 3 Sonnet (balanced speed and capability)
+
+## Known Alpha Limitations
+
+- Requires Node.js ≥ 18 and local Claude Code CLI installation
+- Limited to text generation (no image support due to CLI limitation)  
+- PTY streaming requires `node-pty` (optional, for enhanced streaming)
+- Some code structure improvements needed (AI-generated, welcoming refactoring!)
+
+> **Cost Note**: For Pro/Max subscribers, usage is covered by subscription. API key users are charged per token.
+
+## Installation Options
+
+### Alpha (Current)
+```bash
+# Install from GitHub
+npm install git+https://github.com/ben-vargas/ai-sdk-provider-claude-code.git
+npm install ai
+```
+
+### Future npm Release
+```bash
+# Will be available when published
+npm install ai ai-sdk-provider-claude-code
+```
+
+## Essential Examples
+
+### Streaming Responses
 
 ```typescript
 import { streamText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-// Default: Simulated streaming (works everywhere)
 const result = await streamText({
   model: claudeCode('sonnet'),
   prompt: 'Write a haiku about programming',
@@ -93,6 +113,50 @@ const result = await streamText({
 for await (const chunk of result.textStream) {
   process.stdout.write(chunk);
 }
+```
+
+### Multi-turn Conversations
+
+```typescript
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+
+const messages = [];
+
+// First turn
+messages.push({ role: 'user', content: 'My name is Alice' });
+const { text: response1 } = await generateText({
+  model: claudeCode('sonnet'),
+  messages,
+});
+messages.push({ role: 'assistant', content: response1 });
+
+// Second turn - remembers context
+messages.push({ role: 'user', content: 'What is my name?' });
+const { text: response2 } = await generateText({
+  model: claudeCode('sonnet'),
+  messages,
+});
+console.log(response2); // "Alice"
+```
+
+### Timeout Configuration
+
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+// Default: 2-minute timeout
+const claude = createClaudeCode();
+
+// For complex Opus 4 tasks: longer timeout
+const claudeLong = createClaudeCode({
+  timeoutMs: 600000, // 10 minutes
+});
+
+const { text } = await generateText({
+  model: claudeLong('opus'),
+  prompt: 'Analyze this complex problem in detail...',
+});
 ```
 
 ### Real Streaming with PTY (Experimental)
@@ -112,37 +176,20 @@ for await (const chunk of result.textStream) {
 }
 ```
 
-### Multi-turn Conversations
+### Session Management (Experimental)
 
 ```typescript
 import { generateText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-// Approach 1: Message History (Recommended)
-const messages = [];
-
-messages.push({ role: 'user', content: 'My name is Alice. Remember this.' });
-const { text: response1 } = await generateText({
-  model: claudeCode('sonnet'),
-  messages,
-});
-messages.push({ role: 'assistant', content: response1 });
-
-messages.push({ role: 'user', content: 'What is my name?' });
-const { text: response2 } = await generateText({
-  model: claudeCode('sonnet'),
-  messages,
-});
-
-console.log(response2); // Will remember "Alice"
-
-// Approach 2: Session IDs (Experimental)
+// First message
 const { text, experimental_providerMetadata } = await generateText({
   model: claudeCode('sonnet'),
   messages: [{ role: 'user', content: 'My name is Bob.' }],
   experimental_providerMetadata: true,
 });
 
+// Resume with session ID
 const sessionId = experimental_providerMetadata?.['claude-code']?.sessionId;
 
 const { text: response } = await generateText({
@@ -151,23 +198,9 @@ const { text: response } = await generateText({
 });
 ```
 
-### Custom Configuration
+---
 
-```typescript
-import { createClaudeCode } from 'ai-sdk-provider-claude-code';
-
-const claude = createClaudeCode({
-  cliPath: '/usr/local/bin/claude',
-  skipPermissions: false,
-  maxConcurrentProcesses: 2,
-  timeoutMs: 180000, // 3 minutes
-});
-
-const { text } = await generateText({
-  model: claude('opus'),
-  prompt: 'Hello, Claude!',
-});
-```
+## Detailed Configuration
 
 ### Timeout Configuration
 
@@ -198,9 +231,8 @@ const { text } = await generateText({
 - **Minimum (1 second)**: For testing or very fast responses
 
 **Important**: For tasks expected to take longer than 10 minutes, consider breaking them into smaller chunks or using streaming approaches.
-```
 
-## Configuration Options
+### Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -211,10 +243,23 @@ const { text } = await generateText({
 | `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
 | `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
 
-## Model Support
+### Custom Configuration
 
-- `opus` - Claude 3 Opus (most capable)
-- `sonnet` - Claude 3 Sonnet (balanced)
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+const claude = createClaudeCode({
+  cliPath: '/usr/local/bin/claude',
+  skipPermissions: false,
+  maxConcurrentProcesses: 2,
+  timeoutMs: 180000, // 3 minutes
+});
+
+const { text } = await generateText({
+  model: claude('opus'),
+  prompt: 'Hello, Claude!',
+});
+```
 
 ## Implementation Details
 
@@ -300,12 +345,6 @@ try {
 }
 ```
 
-## Limitations
-
-- Requires Node.js environment with `child_process` support
-- Limited to text generation (no image support)
-- Requires local Claude Code CLI installation
-
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common issues including:
@@ -313,10 +352,46 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common issues incl
 - Streaming configuration
 - Session management
 - Platform-specific issues
+- Timeout configuration for Claude Opus 4
+
+## Project Structure
+
+```
+ai-sdk-provider-claude-code/
+├── src/
+│   ├── index.ts                       # Main exports
+│   ├── claude-code-provider.ts        # Provider factory with timeout config
+│   ├── claude-code-language-model.ts  # AI SDK implementation with full metadata
+│   ├── claude-code-cli-sync.ts        # Sync CLI wrapper (primary implementation)
+│   ├── claude-code-cli-pty.ts         # PTY streaming wrapper (experimental)
+│   ├── claude-code-cli.ts             # Original CLI wrapper (not used)
+│   ├── claude-code-parser.ts          # JSON event parser for streaming
+│   ├── errors.ts                      # Comprehensive error handling
+│   └── types.ts                       # TypeScript types with validation schemas
+├── examples/
+│   ├── basic-usage.ts                 # Simple text generation with metadata
+│   ├── streaming.ts                   # Streaming response demo
+│   ├── custom-config.ts               # Provider configuration options
+│   ├── timeout-config.ts              # Timeout configuration examples
+│   ├── conversation-history.ts        # Multi-turn conversation with message history
+│   ├── test-session.ts                # Session management testing
+│   ├── integration-test-basic.ts      # Comprehensive integration tests
+│   └── check-cli.ts                   # CLI installation verification
+├── package.json
+├── tsconfig.json
+└── LICENSE
+```
 
 ## Contributing
 
 Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) before submitting a PR.
+
+**Alpha Focus Areas:**
+- Code structure improvements (AI-generated code cleanup)
+- Performance optimizations
+- Better error handling patterns
+- TypeScript type improvements
+- Additional example use cases
 
 ## License
 
@@ -325,21 +400,3 @@ MIT - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 This provider is built for the [Vercel AI SDK](https://sdk.vercel.ai/) and uses the [Claude Code CLI](https://docs.anthropic.com/claude-code/cli) by Anthropic.
-
-## Next Steps
-
-1. **Testing**: Create comprehensive unit and integration tests
-2. **Examples**: Build example applications showing real-world usage
-3. **CI/CD**: Set up GitHub Actions for automated testing and releases
-4. **Documentation**: Add JSDoc comments to all public APIs
-5. **Performance**: Profile and optimize CLI spawning and streaming
-6. **Community**: Submit PR to Vercel AI SDK to get listed as a community provider
-
-This implementation provides a fully functional AI SDK provider for Claude Code that:
-- Follows the Language Model Specification v1 exactly
-- Handles streaming and non-streaming modes
-- Manages sessions for conversations
-- Provides proper error handling
-- Includes TypeScript types throughout
-- Manages concurrent CLI processes efficiently
-- Converts between AI SDK message format and Claude Code CLI format
