@@ -1,24 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeCodeLanguageModel } from './claude-code-language-model';
 import { ClaudeCodeCLI } from './claude-code-cli';
-import { ClaudeCodeCLISync } from './claude-code-cli-sync';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
 
 vi.mock('./claude-code-cli');
-vi.mock('./claude-code-cli-sync');
 
 describe('ClaudeCodeLanguageModel', () => {
   let model: ClaudeCodeLanguageModel;
   let mockCLI: ClaudeCodeCLI;
-  let mockCLISync: ClaudeCodeCLISync;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockCLI = new ClaudeCodeCLI();
-    mockCLISync = new ClaudeCodeCLISync();
-    
-    // Mock the sync CLI instance creation
-    vi.mocked(ClaudeCodeCLISync).mockReturnValue(mockCLISync);
     
     model = new ClaudeCodeLanguageModel('opus', {
       model: 'opus',
@@ -30,7 +23,7 @@ describe('ClaudeCodeLanguageModel', () => {
 
   describe('doGenerate', () => {
     it('should generate text response', async () => {
-      const mockExecute = vi.spyOn(mockCLISync, 'execute').mockReturnValue({
+      const mockExecute = vi.spyOn(mockCLI, 'execute').mockResolvedValue({
         stdout: JSON.stringify({
           type: 'result',
           subtype: 'success',
@@ -61,7 +54,8 @@ describe('ClaudeCodeLanguageModel', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         'Say hello',
-        expect.objectContaining({ model: 'opus' })
+        expect.objectContaining({ model: 'opus' }),
+        expect.objectContaining({ signal: undefined })
       );
 
       expect(result).toMatchObject({
@@ -73,7 +67,7 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle system messages', async () => {
-      vi.spyOn(mockCLISync, 'execute').mockReturnValue({
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
         stdout: JSON.stringify({
           type: 'result',
           result: 'Response',
@@ -94,14 +88,15 @@ describe('ClaudeCodeLanguageModel', () => {
 
       const result = await model.doGenerate(options);
       
-      expect(mockCLISync.execute).toHaveBeenCalledWith(
+      expect(mockCLI.execute).toHaveBeenCalledWith(
         'You are helpful\n\nHello',
+        expect.any(Object),
         expect.any(Object)
       );
     });
 
     it('should handle authentication errors', async () => {
-      vi.spyOn(mockCLISync, 'execute').mockReturnValue({
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
         stdout: '',
         stderr: 'Authentication failed',
         exitCode: 401,
@@ -118,7 +113,7 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle conversation with assistant messages', async () => {
-      vi.spyOn(mockCLISync, 'execute').mockReturnValue({
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
         stdout: JSON.stringify({
           type: 'result',
           result: 'Nice to meet you!',
@@ -140,17 +135,24 @@ describe('ClaudeCodeLanguageModel', () => {
 
       await model.doGenerate(options);
 
-      expect(mockCLISync.execute).toHaveBeenCalledWith(
+      expect(mockCLI.execute).toHaveBeenCalledWith(
         'Hello\n\nAssistant: Hi there!\n\nMy name is Alice',
+        expect.any(Object),
         expect.any(Object)
       );
     });
   });
 
   describe('doStream', () => {
-    it('should stream text response using sync CLI', async () => {
-      vi.spyOn(mockCLISync, 'execute').mockReturnValue({
-        stdout: JSON.stringify({
+    it('should stream text response using spawn CLI', async () => {
+      const mockStream = async function* () {
+        yield {
+          type: 'assistant',
+          message: {
+            content: [{ text: 'Hello world!' }]
+          }
+        };
+        yield {
           type: 'result',
           result: 'Hello world!',
           session_id: 'sess_456',
@@ -161,10 +163,10 @@ describe('ClaudeCodeLanguageModel', () => {
             cache_creation_input_tokens: 0,
             cache_read_input_tokens: 0
           }
-        }),
-        stderr: '',
-        exitCode: 0,
-      });
+        };
+      };
+      
+      vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
@@ -192,14 +194,17 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle streaming errors', async () => {
-      vi.spyOn(mockCLISync, 'execute').mockReturnValue({
-        stdout: JSON.stringify({
-          is_error: true,
-          error: 'Stream error'
-        }),
-        stderr: '',
-        exitCode: 0,
-      });
+      const mockStream = async function* () {
+        yield {
+          type: 'error',
+          error: {
+            message: 'Stream error',
+            code: 'STREAM_ERROR'
+          }
+        };
+      };
+      
+      vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
