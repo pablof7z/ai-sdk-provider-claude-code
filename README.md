@@ -62,11 +62,11 @@ npx tsx examples/basic-usage.ts
 - 🔄 Streaming support for real-time responses  
 - 💬 Session management for multi-turn conversations
 - 🔐 No API keys required (uses Claude Code OAuth)
-- 📡 Real streaming via PTY (experimental)
 - 🛡️ TypeScript support with full type safety
 - ⏱️ Configurable timeouts (1s-10min) optimized for Claude Opus 4
 - 📈 Token usage statistics with detailed breakdowns
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
+- ⚡ Zero-latency streaming with readline interface
 
 ## Model Support
 
@@ -77,7 +77,6 @@ npx tsx examples/basic-usage.ts
 
 - Requires Node.js ≥ 18 and local Claude Code CLI installation
 - Limited to text generation (no image support due to CLI limitation)  
-- PTY streaming requires `node-pty` (optional, for enhanced streaming)
 - Some code structure improvements needed (AI-generated, welcoming refactoring!)
 
 > **Cost Note**: For Pro/Max subscribers, usage is covered by subscription. API key users are charged per token.
@@ -159,22 +158,6 @@ const { text } = await generateText({
 });
 ```
 
-### Real Streaming with PTY (Experimental)
-
-```typescript
-import { streamText } from 'ai';
-import { claudeCode } from 'ai-sdk-provider-claude-code';
-
-// Enable PTY-based real streaming (requires node-pty)
-const result = await streamText({
-  model: claudeCode('sonnet', { enablePtyStreaming: true }),
-  prompt: 'Count from 1 to 10',
-});
-
-for await (const chunk of result.textStream) {
-  process.stdout.write(chunk);
-}
-```
 
 ### Session Management (Experimental)
 
@@ -239,7 +222,6 @@ const { text } = await generateText({
 | `cliPath` | `string` | `'claude'` | Path to Claude CLI executable |
 | `skipPermissions` | `boolean` | `true` | Whether to add `--dangerously-skip-permissions` flag |
 | `sessionId` | `string` | `undefined` | Resume a previous conversation session |
-| `enablePtyStreaming` | `boolean` | `false` | Enable real streaming via pseudo-terminal (requires node-pty) |
 | `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
 | `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
 
@@ -288,11 +270,13 @@ Example JSON response:
 }
 ```
 
-### Streaming Modes
+### Streaming Implementation
 
-1. **Default Mode**: Uses `execSync` with `--print --output-format json` for reliable one-shot responses
-2. **PTY Mode**: Uses `--verbose --output-format stream-json` for real-time streaming (experimental)
-   - Note: `--verbose` is required by Claude CLI when using `stream-json` format
+The provider uses a unified spawn-based architecture with readline interface for zero-latency streaming:
+- **Non-streaming**: Uses `spawn` with `--print --output-format json` for reliable responses
+- **Streaming**: Uses `spawn` with `--verbose --output-format stream-json` for real-time streaming
+  - Note: `--verbose` is required by Claude CLI when using `stream-json` format
+  - Readline interface eliminates polling delays for immediate response
 
 ### Provider Metadata
 
@@ -362,9 +346,7 @@ ai-sdk-provider-claude-code/
 │   ├── index.ts                       # Main exports
 │   ├── claude-code-provider.ts        # Provider factory with timeout config
 │   ├── claude-code-language-model.ts  # AI SDK implementation with full metadata
-│   ├── claude-code-cli-sync.ts        # Sync CLI wrapper (primary implementation)
-│   ├── claude-code-cli-pty.ts         # PTY streaming wrapper (experimental)
-│   ├── claude-code-cli.ts             # Original CLI wrapper (not used)
+│   ├── claude-code-cli.ts             # Unified spawn-based CLI wrapper with readline streaming
 │   ├── claude-code-parser.ts          # JSON event parser for streaming
 │   ├── errors.ts                      # Comprehensive error handling
 │   └── types.ts                       # TypeScript types with validation schemas

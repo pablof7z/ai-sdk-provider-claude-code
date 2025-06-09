@@ -9,6 +9,37 @@ describe('ClaudeCodeCLI', () => {
   let cli: ClaudeCodeCLI;
   const mockSpawn = vi.mocked(spawn);
 
+  const createMockProcess = (overrides: any = {}) => {
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const stdin = new PassThrough();
+    
+    const mockProcess = {
+      stdin,
+      stdout,
+      stderr,
+      killed: false,
+      exitCode: null,
+      kill: vi.fn(function(this: any) {
+        this.killed = true;
+        this.exitCode = 1;
+        // Close streams when killed
+        stdout.destroy();
+        stderr.destroy();
+        stdin.destroy();
+      }),
+      on: vi.fn((event: string, handler: Function) => {
+        if (event === 'close') {
+          // Store the close handler to call it later
+          mockProcess._closeHandler = handler;
+        }
+      }),
+      _closeHandler: null as Function | null,
+      ...overrides,
+    };
+    return mockProcess;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     cli = new ClaudeCodeCLI(2);
@@ -16,25 +47,20 @@ describe('ClaudeCodeCLI', () => {
 
   describe('execute', () => {
     it('should execute command with correct arguments', async () => {
-      const stdout = new PassThrough();
-      const stderr = new PassThrough();
-      
-      const mockProcess = {
-        stdout,
-        stderr,
+      const mockProcess = createMockProcess({
         on: vi.fn((event, handler) => {
           if (event === 'close') {
             setTimeout(() => handler(0), 0);
           }
         }),
-      };
+      });
 
       mockSpawn.mockReturnValue(mockProcess as any);
 
       // Emit data before close
       setTimeout(() => {
-        stdout.write(JSON.stringify({ type: 'assistant', message: 'Hello' }) + '\n');
-        stdout.end();
+        mockProcess.stdout.write(JSON.stringify({ type: 'assistant', message: 'Hello' }) + '\n');
+        mockProcess.stdout.end();
       }, 0);
 
       const result = await cli.execute('test prompt', {
@@ -45,7 +71,7 @@ describe('ClaudeCodeCLI', () => {
       });
 
       expect(mockSpawn).toHaveBeenCalledWith('claude', [
-        '-p', 'test prompt',
+        '-p',
         '--print',
         '--model', 'opus',
         '--output-format', 'json',
@@ -57,13 +83,11 @@ describe('ClaudeCodeCLI', () => {
     });
 
     it('should handle session resumption', async () => {
-      const mockProcess = {
-        stdout: new PassThrough(),
-        stderr: new PassThrough(),
+      const mockProcess = createMockProcess({
         on: vi.fn((event, handler) => {
           if (event === 'close') handler(0);
         }),
-      };
+      });
 
       mockSpawn.mockReturnValue(mockProcess as any);
 
@@ -85,15 +109,13 @@ describe('ClaudeCodeCLI', () => {
       let resolveHandlers: Array<(code: number) => void> = [];
       
       mockSpawn.mockImplementation(() => {
-        const mockProcess = {
-          stdout: new PassThrough(),
-          stderr: new PassThrough(),
+        const mockProcess = createMockProcess({
           on: vi.fn((event, handler) => {
             if (event === 'close') {
               resolveHandlers.push(handler);
             }
           }),
-        };
+        });
         return mockProcess as any;
       });
 
@@ -129,37 +151,38 @@ describe('ClaudeCodeCLI', () => {
 
   describe('stream', () => {
     it('should stream events', async () => {
-      const stdout = new PassThrough();
-      const stderr = new PassThrough();
-      
-      const mockProcess = {
-        stdout,
-        stderr,
-        exitCode: null,
-        on: vi.fn(),
-      };
+      const mockProcess = createMockProcess();
 
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      const generator = cli.stream('test prompt', {
+      const generatorPromise = cli.stream('test prompt', {
         model: 'sonnet',
         cliPath: 'claude',
         skipPermissions: true,
         disallowedTools: [],
       });
 
-      // Emit streaming data
+      // Emit streaming data and close stream
       setTimeout(() => {
-        stdout.write(JSON.stringify({ type: 'assistant', message: 'Hello' }) + '\n');
-        stdout.write(JSON.stringify({ type: 'assistant', message: ' world' }) + '\n');
-        stdout.write(JSON.stringify({ type: 'result', result: { result: 'Hello world' } }) + '\n');
-        (mockProcess as any).exitCode = 0;
-      }, 0);
+        mockProcess.stdout.write(JSON.stringify({ type: 'assistant', message: 'Hello' }) + '\n');
+        mockProcess.stdout.write(JSON.stringify({ type: 'assistant', message: ' world' }) + '\n');
+        mockProcess.stdout.write(JSON.stringify({ type: 'result', result: { result: 'Hello world' } }) + '\n');
+        
+        // End the stream and trigger close event
+        mockProcess.stdout.end();
+        mockProcess.exitCode = 0;
+        
+        // Simulate the 'close' event
+        setTimeout(() => {
+          if (mockProcess._closeHandler) {
+            mockProcess._closeHandler(0);
+          }
+        }, 5);
+      }, 5);
 
       const events = [];
-      for await (const event of generator) {
+      for await (const event of generatorPromise) {
         events.push(event);
-        if (events.length === 3) break;
       }
 
       expect(events).toEqual([
@@ -170,32 +193,33 @@ describe('ClaudeCodeCLI', () => {
     });
 
     it('should handle streaming errors', async () => {
-      const stdout = new PassThrough();
-      const stderr = new PassThrough();
-      
-      const mockProcess = {
-        stdout,
-        stderr,
-        exitCode: null,
-        on: vi.fn(),
-      };
+      const mockProcess = createMockProcess();
 
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      const generator = cli.stream('test', {
+      const generatorPromise = cli.stream('test', {
         model: 'opus',
         cliPath: 'claude',
         skipPermissions: true,
         disallowedTools: [],
       });
 
+      // Simulate the process ending with error
       setTimeout(() => {
-        (mockProcess as any).exitCode = 1;
-      }, 0);
+        mockProcess.exitCode = 1;
+        mockProcess.stdout.end();
+        
+        // Simulate the 'close' event with error code
+        setTimeout(() => {
+          if (mockProcess._closeHandler) {
+            mockProcess._closeHandler(1);
+          }
+        }, 5);
+      }, 5);
 
       await expect(async () => {
         const events = [];
-        for await (const event of generator) {
+        for await (const event of generatorPromise) {
           events.push(event);
         }
       }).rejects.toThrow('Claude CLI exited with code 1');

@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { createInterface } from 'readline';
 import type { ClaudeCodeEvent, ClaudeCodeModelConfig } from './types.js';
 import { ClaudeCodeError } from './errors.js';
 
@@ -83,8 +84,13 @@ export class ClaudeCodeCLI {
       args.push('--resume', config.sessionId);
     }
 
-    // Add prompt with print flag for non-interactive mode
-    args.push('-p', prompt, '--print');
+    // Add -p flag for piped input
+    args.push('-p');
+    
+    // Add print flag for non-interactive one-shot mode
+    if (!stream) {
+      args.push('--print');
+    }
 
     // Model selection
     args.push('--model', config.model);
@@ -132,11 +138,22 @@ export class ClaudeCodeCLI {
     const stdout: string[] = [];
     const stderr: string[] = [];
 
+    // Write prompt to stdin
+    child.stdin.write(prompt);
+    child.stdin.end();
+
     child.stdout.on('data', (chunk) => stdout.push(chunk.toString()));
     child.stderr.on('data', (chunk) => stderr.push(chunk.toString()));
 
     return new Promise((resolve, reject) => {
+      // Set up timeout
+      const timeoutMs = config.timeoutMs || 120000;
+      const timeout = setTimeout(() => {
+        child.kill();
+      }, timeoutMs);
+
       child.on('error', (error) => {
+        clearTimeout(timeout);
         reject(new ClaudeCodeError({
           message: `Failed to spawn Claude CLI: ${error.message}`,
           promptExcerpt: prompt.slice(0, 100),
@@ -144,6 +161,18 @@ export class ClaudeCodeCLI {
       });
 
       child.on('close', (code) => {
+        clearTimeout(timeout);
+        
+        if (code !== 0 && child.killed) {
+          const timeoutSeconds = Math.round(timeoutMs / 1000);
+          reject(new ClaudeCodeError({
+            message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
+            code: 'TIMEOUT',
+            promptExcerpt: prompt.slice(0, 100),
+          }));
+          return;
+        }
+        
         resolve({
           stdout: stdout.join(''),
           stderr: stderr.join(''),
@@ -166,52 +195,63 @@ export class ClaudeCodeCLI {
       signal: options.signal,
     });
 
-    const lineBuffer: string[] = [];
-    let currentLine = '';
+    // Write prompt to stdin
+    child.stdin.write(prompt);
+    child.stdin.end();
 
+    // Set up timeout
+    const timeoutMs = config.timeoutMs || 120000;
+    const timeout = setTimeout(() => child.kill(), timeoutMs);
+
+    // Handle stderr
     child.stderr.on('data', (chunk) => {
       console.error(`Claude CLI stderr: ${chunk.toString()}`);
     });
 
-    child.stdout.on('data', (chunk) => {
-      const text = chunk.toString();
-      const lines = text.split('\n');
+    try {
+      // Use readline for async line iteration - no polling!
+      const rl = createInterface({
+        input: child.stdout,
+        crlfDelay: Infinity
+      });
 
-      // Handle partial lines
-      lines[0] = currentLine + lines[0];
-      currentLine = lines.pop() || '';
-
-      lineBuffer.push(...lines.filter((line: string) => line.trim()));
-    });
-
-    // Process lines as they come in
-    while (true) {
-      if (lineBuffer.length > 0) {
-        const line = lineBuffer.shift() as string;
-        try {
-          const event = JSON.parse(line) as ClaudeCodeEvent;
-          yield event;
-        } catch {
-          console.error('Failed to parse Claude CLI output:', line);
+      // Direct async iteration over lines as they arrive
+      for await (const line of rl) {
+        if (line.trim()) {
+          try {
+            const event = JSON.parse(line) as ClaudeCodeEvent;
+            yield event;
+          } catch {
+            console.error('Failed to parse Claude CLI output:', line);
+          }
         }
       }
 
-      // Check if process has ended
-      if (child.exitCode !== null && lineBuffer.length === 0) {
-        break;
-      }
-
-      // Small delay to avoid busy waiting
-      await new Promise(resolve => setTimeout(resolve, 10));
-    }
-
-    // Handle any errors
-    if (child.exitCode !== 0) {
-      throw new ClaudeCodeError({
-        message: `Claude CLI exited with code ${child.exitCode}`,
-        exitCode: child.exitCode,
-        promptExcerpt: prompt.slice(0, 100),
+      // Handle exit code after stream ends
+      await new Promise<void>((resolve, reject) => {
+        child.on('close', (code) => {
+          if (code !== 0) {
+            if (child.killed) {
+              const timeoutSeconds = Math.round(timeoutMs / 1000);
+              reject(new ClaudeCodeError({
+                message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
+                code: 'TIMEOUT',
+                promptExcerpt: prompt.slice(0, 100),
+              }));
+            } else {
+              reject(new ClaudeCodeError({
+                message: `Claude CLI exited with code ${code}`,
+                exitCode: code ?? undefined,
+                promptExcerpt: prompt.slice(0, 100),
+              }));
+            }
+          } else {
+            resolve();
+          }
+        });
       });
+    } finally {
+      clearTimeout(timeout);
     }
   }
 }

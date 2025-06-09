@@ -40,11 +40,11 @@ npx tsx examples/basic-usage.ts
 **Why included**: Essential starting point for new users.
 
 ### 2. Streaming Responses (`streaming.ts`)
-Demonstrates real-time streaming of Claude's responses.
+Demonstrates real-time streaming of Claude's responses using the unified spawn architecture.
 ```bash
 npx tsx examples/streaming.ts
 ```
-**Why included**: Shows both simulated and PTY-based streaming options.
+**Why included**: Shows zero-latency streaming with readline interface.
 
 ### 3. Multi-turn Conversations (`conversation-history.ts`)
 Shows how to maintain context across multiple messages using the message history approach.
@@ -92,9 +92,10 @@ npx tsx examples/check-cli.ts
 
 ## Implementation Notes
 
-During development, we discovered several important constraints:
+During development, we discovered several important constraints and solutions:
 - **Streaming**: Claude CLI requires `--verbose` flag when using `--output-format stream-json`
-- **PTY Mode**: Real streaming requires `node-pty` and may not work in all environments
+- **Spawn Architecture**: Fixed hanging issues by using stdin communication instead of command arguments
+- **Zero-Latency**: Readline interface eliminates polling delays for immediate streaming response
 - **Sessions**: Each CLI call returns a new session ID, but context is maintained with `--resume`
 
 For more technical details, see the main [README](../README.md) and [STATUS](../STATUS.md) documentation.
