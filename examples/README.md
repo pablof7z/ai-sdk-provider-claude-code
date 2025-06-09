@@ -13,7 +13,7 @@ examples/
 ├── custom-config.ts          # Configuration options
 ├── timeout-config.ts         # Timeout configuration examples
 ├── test-session.ts           # Session management
-├── integration-test-basic.ts # Comprehensive tests
+├── integration-test.ts       # Comprehensive tests
 └── check-cli.ts              # CLI verification utility
 ```
 
@@ -76,10 +76,10 @@ npx tsx examples/test-session.ts
 
 ## Testing & Verification
 
-### Integration Test (`integration-test-basic.ts`)
+### Integration Test (`integration-test.ts`)
 Comprehensive test suite that verifies all major features work correctly.
 ```bash
-npx tsx examples/integration-test-basic.ts
+npx tsx examples/integration-test.ts
 ```
 **Why included**: Helps verify your setup and serves as a reference for all features.
 
