@@ -4,15 +4,16 @@ This guide documents common issues and solutions discovered during the developme
 
 ## Common Issues
 
-### 1. Claude CLI Hangs When Using `spawn` or `execFile`
+### 1. Claude CLI Hanging Issues (RESOLVED)
 
 **Problem**: The Claude CLI hangs indefinitely when spawned as a child process using Node.js `spawn` or `execFile`.
 
-**Root Cause**: Claude CLI seems to have issues with TTY detection and buffer flushing when not connected to a real terminal.
+**Root Cause**: The issue was using command line arguments instead of stdin for prompt input. Claude CLI expects prompts via stdin when using the `-p` flag.
 
-**Solution**: Use one of these approaches:
-- **Default**: Use `execSync` with `--print --output-format json` for reliable one-shot responses
-- **PTY Mode**: Use `node-pty` to create a pseudo-terminal for real streaming
+**Solution**: ✅ **FIXED** in current implementation:
+- Use `spawn` with `-p` flag and write prompt to `child.stdin`
+- Properly close stdin after writing: `child.stdin.write(prompt); child.stdin.end()`
+- This eliminates the need for `execSync` or `node-pty` workarounds
 
 ### 2. Streaming Requires `--verbose` Flag
 
@@ -20,7 +21,7 @@ This guide documents common issues and solutions discovered during the developme
 
 **Root Cause**: This is a Claude CLI requirement, not a limitation of our implementation.
 
-**Solution**: Always include `--verbose` when using `--output-format stream-json`.
+**Solution**: ✅ **IMPLEMENTED** - Always include `--verbose` when using `--output-format stream-json`.
 
 ### 3. Session IDs Change Even When Resuming
 
@@ -91,30 +92,34 @@ time claude -p "Explain quantum computing in detail" --print --output-format jso
 
 ## Implementation Decisions
 
-### Why `execSync`?
-After extensive testing, `execSync` proved to be the most reliable method for executing Claude CLI:
+### Why Unified Spawn Architecture?
+After fixing the stdin communication issue, `spawn` became the optimal solution:
 - ✅ Works consistently across all environments
-- ✅ Provides clean JSON output with `--print --output-format json`
-- ✅ No TTY detection issues
-- ❌ Blocks the event loop (mitigated by keeping responses fast)
+- ✅ Supports both streaming and non-streaming modes
+- ✅ Zero-latency streaming with readline interface
+- ✅ No external dependencies required
+- ✅ Proper process lifecycle management
+- ✅ Concurrent request handling with process pooling
 
-### Why PTY for Streaming?
-`node-pty` creates a pseudo-terminal that satisfies Claude CLI's TTY requirements:
-- ✅ Enables real streaming with `--verbose --output-format stream-json`
-- ✅ Works around the spawn/execFile hanging issues
-- ❌ Requires additional dependency
-- ❌ May not work in all environments (e.g., some CI systems)
+### Why Readline Interface?
+Using Node.js `readline.createInterface()` for parsing CLI output:
+- ✅ Event-driven processing eliminates polling delays
+- ✅ Immediate response as soon as data arrives
+- ✅ Built into Node.js core - no external dependencies
+- ✅ Handles line-buffered JSON output correctly
+- ✅ Proper async iteration with `for await (const line of rl)`
 
-### Why Two Implementations?
-We provide both approaches to balance reliability and features:
-- **Default (execSync)**: Maximum compatibility, simulated streaming
-- **PTY Mode**: Better UX with real streaming, when available
+### Architectural Benefits
+The unified approach provides:
+- **Performance**: Zero-latency streaming matches AI SDK ecosystem standards
+- **Reliability**: Single code path reduces complexity and edge cases
+- **Compatibility**: Works in all Node.js environments without optional dependencies
+- **Maintainability**: One implementation to test and maintain
 
 ## Known Limitations
 
 1. **No Image Support**: CLI doesn't support image inputs
-2. **No Concurrent Requests**: Due to `execSync`, requests are processed sequentially
-3. **PTY Platform Support**: `node-pty` may not work on all platforms
+2. **Process Limits**: Configurable concurrent process limit (default: 4) for system resource management
 
 ## References
 
