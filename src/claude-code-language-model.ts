@@ -7,6 +7,7 @@ import type {
   LanguageModelV1ProviderMetadata,
   LanguageModelV1Message,
 } from '@ai-sdk/provider';
+import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
 import { ClaudeCodeCLI } from './claude-code-cli.js';
 import type { ClaudeCodeModelConfig } from './types.js';
 import { isAssistantEvent, isResultEvent, isSystemEvent, isErrorEvent } from './types.js';
@@ -14,7 +15,7 @@ import { ClaudeCodeError, isAuthenticationError } from './errors.js';
 
 export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   readonly specificationVersion = 'v1';
-  readonly defaultObjectGenerationMode = 'tool' as const;
+  readonly defaultObjectGenerationMode = undefined;
   readonly supportsImageUrls = false;
   readonly supportsStructuredOutputs = false;
 
@@ -50,7 +51,19 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     warnings?: LanguageModelV1CallWarning[];
     providerMetadata?: LanguageModelV1ProviderMetadata;
   }> {
-    const { prompt } = options;
+    const { prompt, mode } = options;
+
+    // Check for unsupported object generation modes
+    if (mode.type === 'object-json') {
+      throw new UnsupportedFunctionalityError({
+        functionality: 'object-json mode',
+      });
+    }
+    if (mode.type === 'object-tool') {
+      throw new UnsupportedFunctionalityError({
+        functionality: 'object-tool mode',
+      });
+    }
 
     // Convert messages to a single prompt string
     const promptText = this.messagesToPrompt(prompt);
@@ -150,6 +163,18 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     };
     warnings?: LanguageModelV1CallWarning[];
   }> {
+    // Check for unsupported object generation modes
+    if (options.mode.type === 'object-json') {
+      throw new UnsupportedFunctionalityError({
+        functionality: 'object-json mode',
+      });
+    }
+    if (options.mode.type === 'object-tool') {
+      throw new UnsupportedFunctionalityError({
+        functionality: 'object-tool mode',
+      });
+    }
+
     const promptText = this.messagesToPrompt(options.prompt);
     
     // Use our improved spawn CLI for true zero-latency streaming
