@@ -36,6 +36,7 @@
         "clean": "rm -rf dist",
         "dev": "tsc --watch",
         "lint": "eslint src",
+        "prepare": "npm run build",
         "prepublishOnly": "npm run clean && npm run build",
         "test": "vitest run",
         "test:watch": "vitest",
