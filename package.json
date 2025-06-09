@@ -35,7 +35,7 @@
         "build": "tsc",
         "clean": "rm -rf dist",
         "dev": "tsc --watch",
-        "lint": "eslint src --ext ts",
+        "lint": "eslint src",
         "prepublishOnly": "npm run clean && npm run build",
         "test": "vitest run",
         "test:watch": "vitest",
@@ -51,14 +51,16 @@
         "@ai-sdk/provider-utils": "2.2.8"
     },
     "devDependencies": {
+        "@eslint/js": "^9.28.0",
         "@types/node": "20.17.24",
-        "@typescript-eslint/eslint-plugin": "^8.0.0",
-        "@typescript-eslint/parser": "^8.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.34.0",
+        "@typescript-eslint/parser": "^8.34.0",
         "ai": "^3.0.0",
-        "eslint": "^8.0.0",
+        "eslint": "^9.28.0",
+        "globals": "^16.2.0",
         "typescript": "5.6.3",
-        "vitest": "^2.0.0",
-        "zod": "3.23.8"
+        "vitest": "^3.2.3",
+        "zod": "^3.24.1"
     },
     "peerDependencies": {
         "zod": "^3.0.0"
