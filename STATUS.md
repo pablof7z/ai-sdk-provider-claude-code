@@ -57,7 +57,7 @@
   ├── timeout-config.ts              # Timeout configuration examples
   ├── conversation-history.ts        # Multi-turn conversation with message history
   ├── test-session.ts                # Session management testing
-  ├── integration-test-basic.ts      # Comprehensive integration tests
+  ├── integration-test.ts            # Comprehensive integration tests
   └── check-cli.ts                   # CLI installation verification
 
 /tests

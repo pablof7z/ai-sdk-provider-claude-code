@@ -43,7 +43,7 @@
         "typecheck": "tsc --noEmit",
         "example:basic": "npm run build && npx tsx examples/basic-usage.ts",
         "example:streaming": "npm run build && npx tsx examples/streaming.ts",
-        "example:conversation": "npm run build && npx tsx examples/conversation.ts",
+        "example:conversation": "npm run build && npx tsx examples/conversation-history.ts",
         "example:config": "npm run build && npx tsx examples/custom-config.ts"
     },
     "dependencies": {
