@@ -15,9 +15,9 @@ import { ClaudeCodeError, isAuthenticationError } from './errors.js';
 
 export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   readonly specificationVersion = 'v1';
-  readonly defaultObjectGenerationMode = undefined;
+  readonly defaultObjectGenerationMode = 'json' as const;
   readonly supportsImageUrls = false;
-  readonly supportsStructuredOutputs = false;
+  readonly supportsStructuredOutputs = true;
 
   readonly modelId: string;
   readonly provider = 'claude-code';
@@ -53,12 +53,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   }> {
     const { prompt, mode } = options;
 
-    // Check for unsupported object generation modes
-    if (mode.type === 'object-json') {
-      throw new UnsupportedFunctionalityError({
-        functionality: 'object-json mode',
-      });
-    }
+    // For object-tool mode, we don't support it yet
     if (mode.type === 'object-tool') {
       throw new UnsupportedFunctionalityError({
         functionality: 'object-tool mode',
@@ -66,7 +61,12 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     }
 
     // Convert messages to a single prompt string
-    const promptText = this.messagesToPrompt(prompt);
+    let promptText = this.messagesToPrompt(prompt);
+    
+    // For object-json mode, append JSON generation instructions
+    if (mode.type === 'object-json') {
+      promptText = this.appendJsonInstructions(promptText, mode);
+    }
 
     try {
       // Use spawn CLI for non-streaming requests
@@ -97,8 +97,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       }
 
       // Extract text and session ID from the response
-      const text = jsonResponse.result || '';
+      let text = jsonResponse.result || '';
       const newSessionId = jsonResponse.session_id;
+      
+      // For object-json mode, extract and validate JSON
+      if (mode.type === 'object-json') {
+        text = this.extractJson(text);
+      }
       
       if (newSessionId) {
         this.sessionId = newSessionId;
@@ -163,19 +168,19 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     };
     warnings?: LanguageModelV1CallWarning[];
   }> {
-    // Check for unsupported object generation modes
-    if (options.mode.type === 'object-json') {
-      throw new UnsupportedFunctionalityError({
-        functionality: 'object-json mode',
-      });
-    }
+    // For object-tool mode, we don't support it yet
     if (options.mode.type === 'object-tool') {
       throw new UnsupportedFunctionalityError({
         functionality: 'object-tool mode',
       });
     }
 
-    const promptText = this.messagesToPrompt(options.prompt);
+    let promptText = this.messagesToPrompt(options.prompt);
+    
+    // For object-json mode, append JSON generation instructions
+    if (options.mode.type === 'object-json') {
+      promptText = this.appendJsonInstructions(promptText, options.mode);
+    }
     
     // Use our improved spawn CLI for true zero-latency streaming
     return {
@@ -188,21 +193,37 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
               { signal: options.abortSignal }
             );
 
+            let accumulatedText = '';
+            
             for await (const event of eventStream) {
               if (isSystemEvent(event) && event.session_id && !this.sessionId) {
                 this.sessionId = event.session_id;
               } else if (isAssistantEvent(event) && event.message) {
                 const messageContent = event.message.content?.[0]?.text;
                 if (messageContent) {
-                  // With our readline implementation, this yields immediately when data arrives
-                  controller.enqueue({
-                    type: 'text-delta',
-                    textDelta: messageContent,
-                  } as LanguageModelV1StreamPart);
+                  if (options.mode.type === 'object-json') {
+                    // For object mode, accumulate text
+                    accumulatedText += messageContent;
+                  } else {
+                    // With our readline implementation, this yields immediately when data arrives
+                    controller.enqueue({
+                      type: 'text-delta',
+                      textDelta: messageContent,
+                    } as LanguageModelV1StreamPart);
+                  }
                 }
               } else if (isResultEvent(event)) {
                 if (event.session_id) {
                   this.sessionId = event.session_id;
+                }
+                
+                // For object mode, send the accumulated and extracted JSON as a single text delta
+                if (options.mode.type === 'object-json' && accumulatedText) {
+                  const extractedJson = this.extractJson(accumulatedText);
+                  controller.enqueue({
+                    type: 'text-delta',
+                    textDelta: extractedJson,
+                  } as LanguageModelV1StreamPart);
                 }
                 
                 // Extract token usage from the result event
@@ -297,5 +318,55 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     }
 
     return messages;
+  }
+
+  private appendJsonInstructions(
+    prompt: string,
+    mode: { type: 'object-json'; schema?: unknown; name?: string; description?: string }
+  ): string {
+    let instructions = '\n\nIMPORTANT: You must respond with valid JSON that matches the following requirements:';
+    
+    if (mode.description) {
+      instructions += `\n\nDescription: ${mode.description}`;
+    }
+    
+    if (mode.name) {
+      instructions += `\n\nThe JSON object represents: ${mode.name}`;
+    }
+    
+    if (mode.schema) {
+      instructions += `\n\nJSON Schema:\n${JSON.stringify(mode.schema, null, 2)}`;
+    }
+    
+    instructions += '\n\nRespond ONLY with the JSON object, no explanation, no markdown code blocks, just the raw JSON.';
+    
+    return prompt + instructions;
+  }
+
+  private extractJson(text: string): string {
+    // Remove markdown code blocks if present
+    let jsonText = text.trim();
+    jsonText = jsonText.replace(/^```json\s*/gm, '');
+    jsonText = jsonText.replace(/^```\s*/gm, '');
+    jsonText = jsonText.replace(/```\s*$/gm, '');
+    
+    // Extract JSON object or array
+    const objectMatch = jsonText.match(/{[\s\S]*}/); 
+    const arrayMatch = jsonText.match(/\[[\s\S]*\]/);
+    
+    if (objectMatch) {
+      jsonText = objectMatch[0];
+    } else if (arrayMatch) {
+      jsonText = arrayMatch[0];
+    }
+    
+    // Validate JSON
+    try {
+      JSON.parse(jsonText);
+      return jsonText;
+    } catch {
+      // If parsing fails, return the original text and let the SDK handle the error
+      return text;
+    }
   }
 }

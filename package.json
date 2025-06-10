@@ -45,7 +45,8 @@
         "example:basic": "npm run build && npx tsx examples/basic-usage.ts",
         "example:streaming": "npm run build && npx tsx examples/streaming.ts",
         "example:conversation": "npm run build && npx tsx examples/conversation-history.ts",
-        "example:config": "npm run build && npx tsx examples/custom-config.ts"
+        "example:config": "npm run build && npx tsx examples/custom-config.ts",
+        "example:object": "npm run build && npx tsx examples/generate-object.ts"
     },
     "dependencies": {
         "@ai-sdk/provider": "1.1.3",

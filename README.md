@@ -67,6 +67,7 @@ npx tsx examples/basic-usage.ts
 - 📈 Token usage statistics with detailed breakdowns
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
 - ⚡ Zero-latency streaming with readline interface
+- 🎯 Object generation support with JSON schema validation
 
 ## Model Support
 
@@ -137,6 +138,33 @@ const { text: response2 } = await generateText({
   messages,
 });
 console.log(response2); // "Alice"
+```
+
+### Object Generation with JSON Schema
+
+```typescript
+import { generateObject } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+import { z } from 'zod';
+
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    name: z.string().describe('Full name'),
+    age: z.number().describe('Age in years'),
+    email: z.string().email().describe('Email address'),
+    interests: z.array(z.string()).describe('List of hobbies'),
+  }),
+  prompt: 'Generate a profile for a software developer',
+});
+
+console.log(object);
+// {
+//   name: "Alex Chen",
+//   age: 28,
+//   email: "alex.chen@example.com",
+//   interests: ["coding", "open source", "machine learning"]
+// }
 ```
 
 ### Timeout Configuration
@@ -309,29 +337,56 @@ console.log(experimental_providerMetadata);
 - **For Pro/Max subscribers**: This is informational only - usage is covered by your monthly subscription
 - **For API key users**: This represents actual charges that will be billed to your account
 
-## Limitations
+## Object Generation
 
-### Object Generation Not Supported
-
-The Claude Code CLI does not support structured output or object generation. Attempting to use `generateObject()` or `streamObject()` will throw an error:
+The provider supports object generation through prompt engineering, allowing you to generate structured data with JSON schema validation:
 
 ```typescript
-import { generateObject } from 'ai';
+import { generateObject, streamObject } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 import { z } from 'zod';
 
-// This will throw UnsupportedFunctionalityError
-await generateObject({
+// Generate a complete object
+const { object } = await generateObject({
   model: claudeCode('sonnet'),
   schema: z.object({
-    name: z.string(),
-    age: z.number(),
+    recipe: z.object({
+      name: z.string(),
+      ingredients: z.array(z.string()),
+      instructions: z.array(z.string()),
+      prepTime: z.number(),
+      servings: z.number(),
+    }),
   }),
-  prompt: 'Generate a person',
+  prompt: 'Generate a recipe for chocolate chip cookies',
 });
+
+// Stream partial objects
+const { partialObjectStream } = await streamObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    analysis: z.string(),
+    sentiment: z.enum(['positive', 'negative', 'neutral']),
+    score: z.number(),
+  }),
+  prompt: 'Analyze this review: "Great product!"',
+});
+
+for await (const partial of partialObjectStream) {
+  console.log(partial); // Partial objects as they stream
+}
 ```
 
-This is a limitation of the Claude Code CLI interface, which doesn't provide JSON mode or structured output capabilities.
+**How it works**: The provider appends JSON generation instructions to your prompt and extracts valid JSON from Claude's response. While not as robust as native JSON mode, it works well for most use cases.
+
+**Note**: The `object-tool` mode is not supported. Only `object-json` mode (via `generateObject`/`streamObject`) is available.
+
+## Limitations
+
+- **No image support**: The Claude Code CLI doesn't support image inputs
+- **Object-tool mode not supported**: Only `object-json` mode works via `generateObject`/`streamObject`
+- **Text-only responses**: No support for file generation or other modalities
+- **Session management**: While sessions are supported, message history is the recommended approach
 
 ## Error Handling
 
@@ -380,6 +435,7 @@ ai-sdk-provider-claude-code/
 │   ├── custom-config.ts               # Provider configuration options
 │   ├── timeout-config.ts              # Timeout configuration examples
 │   ├── conversation-history.ts        # Multi-turn conversation with message history
+│   ├── generate-object.ts             # Object generation with JSON schemas
 │   ├── test-session.ts                # Session management testing
 │   ├── integration-test.ts            # Comprehensive integration tests
 │   └── check-cli.ts                   # CLI installation verification
