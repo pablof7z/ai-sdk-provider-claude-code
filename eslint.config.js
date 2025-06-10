@@ -47,7 +47,8 @@ export default [
       'coverage/',
       '*.js',
       '**/*.test.ts',
-      'eslint.config.js'
+      'eslint.config.js',
+      'examples/'
     ]
   }
 ];

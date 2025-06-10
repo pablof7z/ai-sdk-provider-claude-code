@@ -132,4 +132,14 @@ export interface ClaudeCodeSettings {
    * @default 120000 (120 seconds)
    */
   timeoutMs?: number;
+
+  /**
+   * Optional session ID for conversation continuity
+   */
+  sessionId?: string;
+
+  /**
+   * Enable PTY streaming (experimental)
+   */
+  enablePtyStreaming?: boolean;
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClaudeCode } from '../src/index.js';
+import { createClaudeCode } from '../dist/index.js';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 

@@ -17,15 +17,14 @@ async function testSessionManagement() {
     messages: [
       { role: 'user', content: 'My name is Alice and I love programming. What\'s my name?' },
     ],
-    experimental_providerMetadata: true,
   });
   console.log('Response:', response1.text);
-  console.log('Session ID:', response1.experimental_providerMetadata?.['claude-code']?.sessionId);
+  console.log('Session ID:', response1.providerMetadata?.['claude-code']?.sessionId);
   
   // Extract session ID if available
-  const sessionId = response1.experimental_providerMetadata?.['claude-code']?.sessionId;
+  const sessionId = response1.providerMetadata?.['claude-code']?.sessionId;
   
-  if (sessionId) {
+  if (sessionId && typeof sessionId === 'string') {
     console.log('\n2️⃣ Second message: Testing memory with same session...');
     const modelWithSession = claudeCode('sonnet', { sessionId });
     const response2 = await generateText({
@@ -33,10 +32,9 @@ async function testSessionManagement() {
       messages: [
         { role: 'user', content: 'What did I tell you my name was?' },
       ],
-      experimental_providerMetadata: true,
     });
     console.log('Response:', response2.text);
-    const newSessionId = response2.experimental_providerMetadata?.['claude-code']?.sessionId;
+    const newSessionId = response2.providerMetadata?.['claude-code']?.sessionId;
     console.log('Session context maintained:', response2.text.toLowerCase().includes('alice'));
     console.log('New session ID:', newSessionId);
   } else {

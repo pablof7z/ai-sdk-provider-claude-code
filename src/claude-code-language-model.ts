@@ -184,6 +184,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     rawResponse?: {
       headers?: Record<string, string>;
     };
+    request?: {
+      body?: string;
+    };
     warnings?: LanguageModelV1CallWarning[];
   }> {
     // For object-tool mode, we don't support it yet
