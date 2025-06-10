@@ -205,7 +205,9 @@ export class ClaudeCodeCLI {
 
     // Handle stderr
     child.stderr.on('data', (chunk) => {
-      console.error(`Claude CLI stderr: ${chunk.toString()}`);
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] Claude CLI stderr: ${chunk.toString()}`);
+      }
     });
 
     try {
@@ -222,7 +224,9 @@ export class ClaudeCodeCLI {
             const event = JSON.parse(line) as ClaudeCodeEvent;
             yield event;
           } catch {
-            console.error('Failed to parse Claude CLI output:', line);
+            if (process.env.DEBUG) {
+              console.error('[DEBUG] Failed to parse Claude CLI output:', line);
+            }
           }
         }
       }
