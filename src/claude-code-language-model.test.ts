@@ -146,16 +146,18 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle object-json mode with schema', async () => {
-      const mockExecute = vi.spyOn(mockCLI, 'execute').mockResolvedValue({
-        stdout: JSON.stringify({
-          type: 'result',
-          result: 'Here is the JSON object:\n```json\n{"name": "John", "age": 30}\n```',
+      const mockStream = vi.spyOn(mockCLI, 'stream').mockImplementation(async function* () {
+        yield { 
+          type: 'assistant', 
+          message: { 
+            content: [{ type: 'text', text: 'Here is the JSON object:\n```json\n{"name": "John", "age": 30}\n```' }] 
+          } 
+        } as any;
+        yield { 
+          type: 'result', 
           session_id: 'sess_123',
-          is_error: false,
-          usage: { input_tokens: 20, output_tokens: 10 }
-        }),
-        stderr: '',
-        exitCode: 0,
+          usage: { input_tokens: 20, output_tokens: 10 } 
+        } as any;
       });
 
       const options: LanguageModelV1CallOptions = {
@@ -179,13 +181,13 @@ describe('ClaudeCodeLanguageModel', () => {
       const result = await model.doGenerate(options);
 
       // Verify the prompt includes JSON instructions
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockStream).toHaveBeenCalledWith(
         expect.stringContaining('Generate a person object'),
         expect.any(Object),
         expect.any(Object)
       );
       
-      const actualPrompt = mockExecute.mock.calls[0][0];
+      const actualPrompt = mockStream.mock.calls[0][0];
       expect(actualPrompt).toContain('IMPORTANT: You must respond with valid JSON');
       expect(actualPrompt).toContain('A person object with name and age');
       expect(actualPrompt).toContain('The JSON object represents: Person');
@@ -199,15 +201,17 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle object-json mode without schema', async () => {
-      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
-        stdout: JSON.stringify({
+      vi.spyOn(mockCLI, 'stream').mockImplementation(async function* () {
+        yield { 
+          type: 'assistant', 
+          message: { 
+            content: [{ type: 'text', text: '{"items": ["apple", "banana"], "total": 2}' }] 
+          } 
+        } as any;
+        yield { 
           type: 'result',
-          result: '{"items": ["apple", "banana"], "total": 2}',
-          is_error: false,
-          usage: { input_tokens: 15, output_tokens: 8 }
-        }),
-        stderr: '',
-        exitCode: 0,
+          usage: { input_tokens: 15, output_tokens: 8 } 
+        } as any;
       });
 
       const options: LanguageModelV1CallOptions = {
@@ -241,15 +245,17 @@ describe('ClaudeCodeLanguageModel', () => {
       ];
 
       for (const testCase of testCases) {
-        vi.spyOn(mockCLI, 'execute').mockResolvedValue({
-          stdout: JSON.stringify({
+        vi.spyOn(mockCLI, 'stream').mockImplementation(async function* () {
+          yield { 
+            type: 'assistant', 
+            message: { 
+              content: [{ type: 'text', text: testCase.input }] 
+            } 
+          } as any;
+          yield { 
             type: 'result',
-            result: testCase.input,
-            is_error: false,
-            usage: { input_tokens: 10, output_tokens: 5 }
-          }),
-          stderr: '',
-          exitCode: 0,
+            usage: { input_tokens: 10, output_tokens: 5 } 
+          } as any;
         });
 
         const options: LanguageModelV1CallOptions = {
@@ -264,15 +270,17 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle invalid JSON gracefully', async () => {
-      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
-        stdout: JSON.stringify({
+      vi.spyOn(mockCLI, 'stream').mockImplementation(async function* () {
+        yield { 
+          type: 'assistant', 
+          message: { 
+            content: [{ type: 'text', text: 'This is not valid JSON at all' }] 
+          } 
+        } as any;
+        yield { 
           type: 'result',
-          result: 'This is not valid JSON at all',
-          is_error: false,
-          usage: { input_tokens: 10, output_tokens: 5 }
-        }),
-        stderr: '',
-        exitCode: 0,
+          usage: { input_tokens: 10, output_tokens: 5 } 
+        } as any;
       });
 
       const options: LanguageModelV1CallOptions = {
@@ -743,6 +751,183 @@ describe('ClaudeCodeLanguageModel', () => {
 
       const prompt = convertMessages(messages);
       expect(prompt).toBe('Be helpful\n\nHello\n\nAssistant: Hi!\n\nHow are you?');
+    });
+  });
+
+  describe('Auto-streaming for large responses', () => {
+    it('should use streaming for prompts larger than threshold', async () => {
+      const largePrompt = 'x'.repeat(1500); // Exceeds default 1000 char threshold
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+      const mockExecuteSpy = vi.spyOn(mockCLI, 'execute');
+
+      // Mock streaming response
+      mockStreamSpy.mockImplementation(async function* () {
+        yield { type: 'assistant', message: { content: [{ text: '{"result": "streamed"}' }] } } as any;
+        yield { type: 'result', usage: { input_tokens: 100, output_tokens: 50 } } as any;
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: largePrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+
+      expect(mockStreamSpy).toHaveBeenCalled();
+      expect(mockExecuteSpy).not.toHaveBeenCalled();
+      expect(result.text).toBe('{"result": "streamed"}');
+    });
+
+    it('should use streaming for object-json mode regardless of prompt size', async () => {
+      const smallPrompt = 'short';
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+      const mockExecuteSpy = vi.spyOn(mockCLI, 'execute');
+
+      mockStreamSpy.mockImplementation(async function* () {
+        yield { type: 'assistant', message: { content: [{ text: '{"key": "value"}' }] } } as any;
+        yield { type: 'result', usage: { input_tokens: 10, output_tokens: 5 } } as any;
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: smallPrompt }] }],
+        mode: { type: 'object-json' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+
+      expect(mockStreamSpy).toHaveBeenCalled();
+      expect(mockExecuteSpy).not.toHaveBeenCalled();
+      expect(result.text).toBe('{"key": "value"}');
+    });
+
+    it('should use regular mode for small prompts', async () => {
+      const smallPrompt = 'short prompt';
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+      const mockExecuteSpy = vi.spyOn(mockCLI, 'execute');
+
+      mockExecuteSpy.mockResolvedValue({
+        stdout: JSON.stringify({ result: 'normal response', usage: { input_tokens: 5, output_tokens: 3 } }),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: smallPrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+
+      expect(mockExecuteSpy).toHaveBeenCalled();
+      expect(mockStreamSpy).not.toHaveBeenCalled();
+      expect(result.text).toBe('normal response');
+    });
+
+    it('should respect custom largeResponseThreshold', async () => {
+      const customConfig: ClaudeCodeModelConfig = { 
+        model: 'opus',
+        cliPath: 'claude',
+        skipPermissions: true,
+        disallowedTools: [],
+        largeResponseThreshold: 50 
+      };
+      const customModel = new ClaudeCodeLanguageModel('opus', customConfig, mockCLI);
+      
+      const mediumPrompt = 'x'.repeat(60); // Exceeds custom 50 char threshold
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+
+      mockStreamSpy.mockImplementation(async function* () {
+        yield { type: 'assistant', message: { content: [{ text: 'streamed' }] } } as any;
+        yield { type: 'result', usage: { input_tokens: 10, output_tokens: 5 } } as any;
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: mediumPrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await customModel.doGenerate(options);
+
+      expect(mockStreamSpy).toHaveBeenCalled();
+    });
+
+    it('should use streaming when maxTokens > 2000', async () => {
+      const smallPrompt = 'short';
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+
+      mockStreamSpy.mockImplementation(async function* () {
+        yield { type: 'assistant', message: { content: [{ text: 'large response' }] } } as any;
+        yield { type: 'result', usage: { input_tokens: 10, output_tokens: 2500 } } as any;
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: smallPrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+        maxTokens: 3000,
+      };
+
+      const result = await model.doGenerate(options);
+
+      expect(mockStreamSpy).toHaveBeenCalled();
+      expect(result.text).toBe('large response');
+    });
+
+    it('should fallback to normal mode on retryable stream errors', async () => {
+      const largePrompt = 'x'.repeat(1500);
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+      const mockExecuteSpy = vi.spyOn(mockCLI, 'execute');
+
+      // First attempt: streaming fails with timeout
+      mockStreamSpy.mockImplementation(async function* () {
+        throw new ClaudeCodeError({
+          message: 'Timeout',
+          code: 'TIMEOUT',
+        });
+      });
+
+      // Fallback: normal mode succeeds
+      mockExecuteSpy.mockResolvedValue({
+        stdout: JSON.stringify({ result: 'fallback response', usage: { input_tokens: 100, output_tokens: 50 } }),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: largePrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+
+      expect(mockStreamSpy).toHaveBeenCalled();
+      expect(mockExecuteSpy).toHaveBeenCalled();
+      expect(result.text).toBe('fallback response');
+    });
+
+    it('should handle streaming errors without fallback for non-retryable errors', async () => {
+      const largePrompt = 'x'.repeat(1500);
+      const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
+
+      mockStreamSpy.mockImplementation(async function* () {
+        throw new ClaudeCodeError({
+          message: 'Authentication required',
+          code: 'AUTH_REQUIRED',
+        });
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: largePrompt }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow('Authentication required');
     });
   });
 });

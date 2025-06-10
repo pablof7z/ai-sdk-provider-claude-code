@@ -13,6 +13,7 @@
 - **Streaming**: Unified spawn-based implementation with zero-latency streaming using readline interface
 - **Timeout Configuration**: Fully configurable timeouts (1s-10min) optimized for Claude Opus 4
 - **Object Generation**: Support for `generateObject`/`streamObject` via prompt engineering with Zod schema validation
+- **Auto-Streaming**: Automatic internal streaming for large responses to prevent 8K stdout truncation
 
 ### Implementation Details
 - **Unified Architecture**: Uses `spawn` with stdin communication for both streaming and non-streaming
@@ -91,6 +92,7 @@
 9. **✅ Documentation**: Complete documentation with streaming improvements
 10. **✅ Object Generation**: Full support for structured data generation with JSON schema validation
 11. **✅ AI SDK v4 Compatibility**: Updated to latest AI SDK version with all required fields
+12. **✅ Auto-Streaming**: Prevents 8K truncation by automatically using streaming for large responses
 
 ### 🎯 Current Status
 - **Production Ready**: Full AI SDK provider implementation

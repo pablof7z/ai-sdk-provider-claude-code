@@ -68,6 +68,7 @@ npx tsx examples/basic-usage.ts
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
 - ⚡ Zero-latency streaming with readline interface
 - 🎯 Object generation support with JSON schema validation
+- 🔀 Automatic streaming for large responses (prevents 8K truncation)
 
 ## Model Support
 
@@ -251,6 +252,7 @@ const { text } = await generateText({
 | `sessionId` | `string` | `undefined` | Resume a previous conversation session |
 | `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
 | `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
+| `largeResponseThreshold` | `number` | `1000` | Prompt length threshold for auto-streaming (characters) |
 
 ### Custom Configuration
 
@@ -269,6 +271,47 @@ const { text } = await generateText({
   prompt: 'Hello, Claude!',
 });
 ```
+
+## Auto-Streaming for Large Responses
+
+The provider automatically switches to streaming mode internally when responses might exceed Node.js's 8K stdout buffer limit. This prevents truncation errors for large JSON objects or lengthy responses.
+
+### How It Works
+
+The provider detects when to use streaming based on:
+- **Prompt length**: Prompts longer than the threshold (default: 1000 chars)
+- **Object generation**: Always uses streaming for `generateObject`/`streamObject`
+- **Token limits**: When `maxTokens` > 2000
+
+This is completely transparent - you use the same API whether the provider uses streaming internally or not:
+
+```typescript
+// Automatically uses streaming internally for large responses
+const { object } = await generateObject({
+  model: claudeCode('opus'),
+  schema: complexSchema,
+  prompt: 'Generate a detailed project plan with 20 tasks...',
+});
+
+// Also triggers auto-streaming due to high token limit
+const { text } = await generateText({
+  model: claudeCode('opus'),
+  prompt: 'Write a short story',
+  maxTokens: 5000,
+});
+```
+
+### Configuration
+
+You can adjust the threshold for auto-streaming:
+
+```typescript
+const claude = createClaudeCode({
+  largeResponseThreshold: 500, // Switch to streaming for prompts > 500 chars
+});
+```
+
+Set to 0 to always use streaming, or a very high number to disable auto-streaming.
 
 ## Implementation Details
 

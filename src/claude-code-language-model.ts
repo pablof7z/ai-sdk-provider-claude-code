@@ -63,6 +63,51 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       });
     }
 
+    // Estimate if response might exceed 8K based on prompt characteristics
+    const promptText = this.messagesToPrompt(prompt);
+    const largeResponseThreshold = this.config.largeResponseThreshold ?? 1000;
+    
+    const estimatedLarge = 
+      promptText.length > largeResponseThreshold || // Large prompts often generate large responses
+      mode.type === 'object-json' || // Object generation tends to be verbose
+      (options.maxTokens && options.maxTokens > 2000); // High token limit
+    
+    if (estimatedLarge) {
+      // Use streaming internally to bypass 8K stdout buffer limit
+      try {
+        return await this.doGenerateViaStreaming(options);
+      } catch (streamError) {
+        // If streaming fails with certain errors, try regular mode as fallback
+        if (this.isRetryableStreamError(streamError)) {
+          return await this.doGenerateNormal(options);
+        }
+        throw streamError;
+      }
+    }
+    
+    // Use normal non-streaming for small responses
+    return await this.doGenerateNormal(options);
+  }
+
+  private async doGenerateNormal(options: LanguageModelV1CallOptions): Promise<{
+    text?: string;
+    finishReason: LanguageModelV1FinishReason;
+    usage: {
+      promptTokens: number;
+      completionTokens: number;
+    };
+    rawCall: {
+      rawPrompt: unknown;
+      rawSettings: Record<string, unknown>;
+    };
+    rawResponse?: {
+      headers?: Record<string, string>;
+    };
+    warnings?: LanguageModelV1CallWarning[];
+    providerMetadata?: LanguageModelV1ProviderMetadata;
+  }> {
+    const { prompt, mode } = options;
+
     // Convert messages to a single prompt string
     let promptText = this.messagesToPrompt(prompt);
     
@@ -93,10 +138,18 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       try {
         jsonResponse = JSON.parse(result.stdout.trim());
       } catch {
+        // Check if response was truncated
+        const output = result.stdout.trim();
+        const lastChar = output[output.length - 1];
+        const isTruncated = lastChar !== '}' && lastChar !== ']';
+        
         throw new ClaudeCodeError({
-          message: 'Failed to parse Claude CLI response as JSON',
+          message: isTruncated 
+            ? `Claude CLI response was truncated at ${output.length} characters. This is a bug - please report it. The provider should have automatically used streaming mode.`
+            : 'Failed to parse Claude CLI response as JSON',
           code: 'JSON_PARSE_ERROR',
-          stderr: result.stdout.slice(0, 500), // Include part of stdout for debugging
+          stderr: output.slice(0, 500),
+          promptExcerpt: promptText.slice(0, 100),
         });
       }
       
@@ -365,6 +418,134 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     instructions += '\n\nRespond ONLY with the JSON object, no explanation, no markdown code blocks, just the raw JSON.';
     
     return prompt + instructions;
+  }
+
+  private async doGenerateViaStreaming(options: LanguageModelV1CallOptions): Promise<{
+    text?: string;
+    finishReason: LanguageModelV1FinishReason;
+    usage: {
+      promptTokens: number;
+      completionTokens: number;
+    };
+    rawCall: {
+      rawPrompt: unknown;
+      rawSettings: Record<string, unknown>;
+    };
+    rawResponse?: {
+      headers?: Record<string, string>;
+    };
+    warnings?: LanguageModelV1CallWarning[];
+    providerMetadata?: LanguageModelV1ProviderMetadata;
+  }> {
+    const { prompt, mode } = options;
+    
+    // Convert messages to a single prompt string
+    let promptText = this.messagesToPrompt(prompt);
+    
+    // For object-json mode, append JSON generation instructions
+    if (mode.type === 'object-json') {
+      promptText = this.appendJsonInstructions(promptText, mode);
+    }
+    
+    // Accumulate the full response using streaming
+    let accumulatedText = '';
+    let usage: { promptTokens: number; completionTokens: number } | undefined;
+    let sessionId: string | undefined;
+    let providerMetadata: LanguageModelV1ProviderMetadata = {};
+    
+    try {
+      const eventStream = this.cli.stream(
+        promptText,
+        { ...this.config, sessionId: this.sessionId },
+        { signal: options.abortSignal }
+      );
+      
+      for await (const event of eventStream) {
+        if (isSystemEvent(event) && event.session_id) {
+          sessionId = event.session_id;
+        } else if (isAssistantEvent(event) && event.message) {
+          const messageContent = event.message.content?.[0]?.text;
+          if (messageContent) {
+            accumulatedText += messageContent;
+          }
+        } else if (isResultEvent(event)) {
+          sessionId = event.session_id || sessionId;
+          
+          // Extract usage and metadata from result event
+          const eventUsage = event.usage || {};
+          const promptTokens = (eventUsage.input_tokens || 0) + 
+                              (eventUsage.cache_creation_input_tokens || 0) + 
+                              (eventUsage.cache_read_input_tokens || 0);
+          const completionTokens = eventUsage.output_tokens || 0;
+          
+          usage = { promptTokens, completionTokens };
+          
+          providerMetadata = {
+            'claude-code': {
+              ...(sessionId && { sessionId }),
+              ...(event.cost_usd && { costUsd: event.cost_usd }),
+              ...(event.duration_ms && { durationMs: event.duration_ms }),
+              ...(eventUsage && { 
+                rawUsage: {
+                  inputTokens: eventUsage.input_tokens || 0,
+                  outputTokens: eventUsage.output_tokens || 0,
+                  cacheCreationInputTokens: eventUsage.cache_creation_input_tokens || 0,
+                  cacheReadInputTokens: eventUsage.cache_read_input_tokens || 0,
+                }
+              }),
+            },
+          };
+        } else if (isErrorEvent(event)) {
+          throw new ClaudeCodeError({
+            message: event.error.message || 'Claude CLI error',
+            code: event.error.code || 'CLI_ERROR',
+          });
+        }
+      }
+      
+      // Process accumulated text
+      if (mode.type === 'object-json' || accumulatedText.includes('```')) {
+        accumulatedText = this.extractJson(accumulatedText);
+      }
+      
+      if (sessionId) {
+        this.sessionId = sessionId;
+      }
+      
+      return {
+        text: accumulatedText,
+        finishReason: 'stop' as LanguageModelV1FinishReason,
+        usage: usage || { promptTokens: 0, completionTokens: 0 },
+        rawCall: {
+          rawPrompt: promptText,
+          rawSettings: {
+            model: this.modelId,
+            sessionId: this.sessionId,
+          },
+        },
+        rawResponse: {
+          headers: {},
+        },
+        warnings: [],
+        providerMetadata,
+      };
+    } catch (error) {
+      if (isAuthenticationError(error)) {
+        throw new ClaudeCodeError({
+          message: 'Authentication failed. Please run "claude login" to authenticate.',
+          code: 'AUTH_REQUIRED',
+        });
+      }
+      throw error;
+    }
+  }
+
+  private isRetryableStreamError(error: unknown): boolean {
+    // Only retry on specific errors that might succeed with non-streaming
+    if (error instanceof ClaudeCodeError) {
+      return error.code === 'TIMEOUT' || error.code === 'STREAM_ERROR';
+    }
+    return false;
   }
 
   private extractJson(text: string): string {

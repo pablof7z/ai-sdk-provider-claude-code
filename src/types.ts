@@ -92,6 +92,7 @@ export const claudeCodeModelSchema = z.object({
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
   timeoutMs: z.number().min(1000).max(600000).default(120000),
+  largeResponseThreshold: z.number().optional(),
 });
 
 export type ClaudeCodeModelConfig = z.infer<typeof claudeCodeModelSchema>;
@@ -104,6 +105,7 @@ export const claudeCodeSettingsSchema = z.object({
   timeoutMs: z.number().min(1000).max(600000).optional(),
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
+  largeResponseThreshold: z.number().optional(),
 }).strict();
 
 // Provider settings
@@ -142,4 +144,11 @@ export interface ClaudeCodeSettings {
    * Enable PTY streaming (experimental)
    */
   enablePtyStreaming?: boolean;
+
+  /**
+   * Prompt length threshold for auto-switching to streaming mode.
+   * Responses for prompts longer than this may exceed 8K.
+   * @default 1000 characters
+   */
+  largeResponseThreshold?: number;
 }
