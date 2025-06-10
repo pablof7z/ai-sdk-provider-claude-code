@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { createClaudeCode } from '../src/index.js';
-import { generateObject, streamObject } from 'ai';
+import { generateObject } from 'ai';
 import { z } from 'zod';
 
 // Create the provider
@@ -82,9 +82,9 @@ async function generateUserProfile() {
   }
 }
 
-// Example 3: Stream object generation
+// Example 3: Product review analysis
 async function streamAnalysis() {
-  console.log('3. Streaming analysis results...\n');
+  console.log('3. Analyzing product review...\n');
   
   const analysisSchema = z.object({
     summary: z.string().describe('Brief summary of the analysis'),
@@ -95,23 +95,20 @@ async function streamAnalysis() {
   });
 
   try {
-    const { partialObjectStream } = await streamObject({
+    // Note: Not using streamObject because object generation through
+    // prompt engineering requires the complete response before parsing JSON.
+    // Both generateObject and streamObject wait for the full response.
+    const { object } = await generateObject({
       model: claudeCode('opus'),
       prompt: 'Analyze this product review: "This laptop is amazing! The battery life is incredible, lasting all day. The keyboard feels great to type on, though the trackpad could be more responsive. Overall, excellent value for money."',
       schema: analysisSchema,
     });
 
-    console.log('Streaming analysis results:');
-    for await (const partialObject of partialObjectStream) {
-      console.clear();
-      console.log('=== Claude Code Generate Object Example ===\n');
-      console.log('3. Streaming analysis results...\n');
-      console.log('Partial result:');
-      console.log(JSON.stringify(partialObject, null, 2));
-    }
-    console.log('\n✓ Streaming complete\n');
+    console.log('Analysis result:');
+    console.log(JSON.stringify(object, null, 2));
+    console.log('\n');
   } catch (error) {
-    console.error('Error streaming analysis:', error);
+    console.error('Error analyzing review:', error);
   }
 }
 

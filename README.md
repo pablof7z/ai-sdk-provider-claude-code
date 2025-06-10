@@ -361,8 +361,9 @@ const { object } = await generateObject({
   prompt: 'Generate a recipe for chocolate chip cookies',
 });
 
-// Stream partial objects
-const { partialObjectStream } = await streamObject({
+// Note: streamObject waits for complete response before parsing
+// Use generateObject for clarity since streaming doesn't provide benefits
+const { object: analysis } = await generateObject({
   model: claudeCode('sonnet'),
   schema: z.object({
     analysis: z.string(),
@@ -372,14 +373,15 @@ const { partialObjectStream } = await streamObject({
   prompt: 'Analyze this review: "Great product!"',
 });
 
-for await (const partial of partialObjectStream) {
-  console.log(partial); // Partial objects as they stream
-}
+console.log(analysis);
 ```
 
 **How it works**: The provider appends JSON generation instructions to your prompt and extracts valid JSON from Claude's response. While not as robust as native JSON mode, it works well for most use cases.
 
-**Note**: The `object-tool` mode is not supported. Only `object-json` mode (via `generateObject`/`streamObject`) is available.
+**Important limitations**:
+- **No real-time streaming for objects**: Since we rely on prompt engineering rather than native JSON support, `streamObject` must wait for the complete response before parsing the JSON. This means `streamObject` and `generateObject` behave identically for object generation - both wait for the full response.
+- **Object-tool mode not supported**: Only `object-json` mode (via `generateObject`/`streamObject`) is available.
+- **Regular text streaming works**: Only standard text generation truly benefits from streaming. Object generation always requires the complete response.
 
 ## Object Generation Cookbook
 
@@ -436,20 +438,6 @@ const { object } = await generateObject({
 ```
 [Full example](examples/generate-object-constraints.ts)
 
-#### Streaming Objects
-Get real-time updates during generation:
-```typescript
-const { partialObjectStream } = await streamObject({
-  model: claudeCode('sonnet'),
-  schema: yourSchema,
-  prompt: 'Generate data',
-});
-
-for await (const partial of partialObjectStream) {
-  console.log('Progress:', partial);
-}
-```
-[Full example](examples/generate-object-streaming.ts)
 
 ### Best Practices
 
@@ -461,10 +449,11 @@ for await (const partial of partialObjectStream) {
 
 ### Common Patterns
 
-- **API Responses**: [REST APIs, GraphQL, webhooks](examples/generate-object-real-world.ts)
-- **Configuration Files**: [App settings, database configs](examples/generate-object-real-world.ts)
+- **API Responses**: [Simple REST, GraphQL, webhooks](examples/generate-object-patterns.ts)
+- **Configuration Files**: [App settings, database schemas](examples/generate-object-patterns.ts)
 - **Data Models**: [User profiles, products, orders](examples/generate-object-nested.ts)
 - **Error Recovery**: [Retries, fallbacks, debugging](examples/generate-object-recovery.ts)
+- **Note**: For object generation, use `generateObject` instead of `streamObject` as streaming provides no benefits
 
 ### Interactive Testing
 
@@ -640,8 +629,7 @@ ai-sdk-provider-claude-code/
 │   ├── generate-object-basic.ts       # Basic object generation patterns
 │   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── generate-object-constraints.ts # Validation and constraints
-│   ├── generate-object-streaming.ts   # Streaming object generation
-│   ├── generate-object-real-world.ts  # Real-world API patterns
+│   ├── generate-object-patterns.ts    # Simple real-world patterns
 │   ├── generate-object-recovery.ts    # Error handling strategies
 │   ├── generate-object-interactive.ts # Interactive CLI tool
 │   ├── test-session.ts                # Session management testing

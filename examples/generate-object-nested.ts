@@ -271,19 +271,27 @@ async function example4_socialMediaPost() {
 async function example5_fileSystemStructure() {
   console.log('5️⃣  File System Directory Tree\n');
   
-  // Recursive schema for directory structure
-  const fileNodeSchema: z.ZodType<any> = z.lazy(() => z.object({
-    name: z.string(),
+  // Simplified non-recursive schema to avoid infinite loops
+  const fileNodeSchema = z.object({
+    name: z.string().describe('File or directory name'),
     type: z.enum(['file', 'directory']),
     size: z.number().optional().describe('Size in bytes for files'),
-    extension: z.string().optional().describe('File extension'),
-    children: z.array(fileNodeSchema).optional().describe('Subdirectories and files'),
-    permissions: z.object({
-      read: z.boolean(),
-      write: z.boolean(),
-      execute: z.boolean(),
-    }).optional(),
-  }));
+    extension: z.string().optional().describe('File extension without dot'),
+    // Limited depth to prevent recursion issues
+    children: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['file', 'directory']),
+      size: z.number().optional(),
+      extension: z.string().optional(),
+      // Only go 2 levels deep
+      children: z.array(z.object({
+        name: z.string(),
+        type: z.enum(['file', 'directory']),
+        size: z.number().optional(),
+        extension: z.string().optional(),
+      })).optional(),
+    })).optional().describe('Subdirectories and files'),
+  });
 
   const projectSchema = z.object({
     project: z.object({
@@ -294,14 +302,19 @@ async function example5_fileSystemStructure() {
     }),
   });
 
-  const { object } = await generateObject({
-    model: claudeCode('sonnet'),
-    schema: projectSchema,
-    prompt: 'Generate a typical Next.js project file structure with src directory, showing 2-3 levels deep.',
-  });
+  try {
+    const { object } = await generateObject({
+      model: claudeCode('sonnet'),
+      schema: projectSchema,
+      prompt: 'Generate a typical Next.js project file structure with src directory, showing 2 levels deep. Include common files like package.json, tsconfig.json, and directories like src, public, and components.',
+    });
 
-  console.log('Generated file structure:');
-  console.log(JSON.stringify(object, null, 2));
+    console.log('Generated file structure:');
+    console.log(JSON.stringify(object, null, 2));
+  } catch (error: any) {
+    console.error('❌ Error generating file structure:', error.message);
+    console.log('💡 Tip: Complex recursive schemas can be challenging. Consider using fixed-depth schemas instead.');
+  }
   console.log();
 }
 

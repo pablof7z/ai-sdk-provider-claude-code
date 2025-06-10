@@ -8,7 +8,7 @@
  */
 
 import { createClaudeCode } from '../src/index.js';
-import { generateObject, streamObject } from 'ai';
+import { generateObject } from 'ai';
 import { z } from 'zod';
 import * as readline from 'readline';
 
@@ -80,10 +80,9 @@ async function displayMenu() {
   console.log('Choose an option:\n');
   console.log('1. Quick generation (pre-defined schemas)');
   console.log('2. Custom schema generation');
-  console.log('3. Streaming demo');
-  console.log('4. Batch generation');
-  console.log('5. Export generated objects');
-  console.log('6. Exit\n');
+  console.log('3. Batch generation');
+  console.log('4. Export generated objects');
+  console.log('5. Exit\n');
 }
 
 async function quickGeneration() {
@@ -182,55 +181,6 @@ async function customSchemaGeneration() {
   await question('\nPress Enter to continue...');
 }
 
-async function streamingDemo() {
-  clearScreen();
-  console.log('🌊 Streaming Demo\n');
-  
-  const schema = z.object({
-    story: z.object({
-      title: z.string(),
-      genre: z.string(),
-      characters: z.array(z.object({
-        name: z.string(),
-        role: z.string(),
-      })),
-      chapters: z.array(z.object({
-        number: z.number(),
-        title: z.string(),
-        summary: z.string(),
-      })),
-    }),
-  });
-  
-  const prompt = await question('Describe the story you want: ');
-  
-  console.log('\n📖 Generating story...\n');
-  
-  try {
-    const { partialObjectStream } = await streamObject({
-      model: claudeCode('sonnet'),
-      schema,
-      prompt: `Generate a story outline: ${prompt}`,
-    });
-    
-    let lastUpdate = Date.now();
-    
-    for await (const partialObject of partialObjectStream) {
-      if (Date.now() - lastUpdate > 500) { // Update every 500ms
-        clearScreen();
-        console.log('🌊 Streaming Demo - Generating...\n');
-        console.log(JSON.stringify(partialObject, null, 2));
-        lastUpdate = Date.now();
-      }
-    }
-    
-    console.log('\n✅ Generation complete!');
-  } catch (error: any) {
-    console.error('❌ Error:', error.message);
-  }
-  
-  await question('\nPress Enter to continue...');
-}
 
 async function batchGeneration() {
   clearScreen();
@@ -348,15 +298,12 @@ async function main() {
         await customSchemaGeneration();
         break;
       case '3':
-        await streamingDemo();
-        break;
-      case '4':
         await batchGeneration();
         break;
-      case '5':
+      case '4':
         await exportObjects();
         break;
-      case '6':
+      case '5':
         running = false;
         break;
       default:

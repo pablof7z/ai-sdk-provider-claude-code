@@ -107,7 +107,7 @@ async function example3_stringPatterns() {
       email: z.string().email(),
       password: z.string()
         .min(8)
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, 
           'Must contain uppercase, lowercase, number, and special character'),
       phone: z.string()
         .regex(/^\+?[1-9]\d{1,14}$/, 'E.164 phone format'),
@@ -127,7 +127,7 @@ async function example3_stringPatterns() {
       }),
       preferences: z.object({
         timezone: z.string()
-          .regex(/^[A-Z][a-z]+\/[A-Z][a-z]+$/, 'Timezone format like America/New_York'),
+          .regex(/^[A-Z][a-z]+\/[A-Z][a-z]+(?:_[A-Z][a-z]+)?$/, 'Timezone format like America/New_York'),
         locale: z.string()
           .regex(/^[a-z]{2}-[A-Z]{2}$/, 'Locale format like en-US'),
         currency: z.string()

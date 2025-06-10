@@ -50,8 +50,7 @@
         "example:object:basic": "npm run build && npx tsx examples/generate-object-basic.ts",
         "example:object:nested": "npm run build && npx tsx examples/generate-object-nested.ts",
         "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts",
-        "example:object:streaming": "npm run build && npx tsx examples/generate-object-streaming.ts",
-        "example:object:real-world": "npm run build && npx tsx examples/generate-object-real-world.ts",
+        "example:object:patterns": "npm run build && npx tsx examples/generate-object-patterns.ts",
         "example:object:recovery": "npm run build && npx tsx examples/generate-object-recovery.ts",
         "example:object:interactive": "npm run build && npx tsx examples/generate-object-interactive.ts"
     },

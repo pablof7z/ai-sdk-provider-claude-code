@@ -86,7 +86,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       }
 
       // Parse response - Claude CLI returns a single JSON object for non-streaming
-      const jsonResponse = JSON.parse(result.stdout.trim());
+      let jsonResponse;
+      try {
+        jsonResponse = JSON.parse(result.stdout.trim());
+      } catch {
+        throw new ClaudeCodeError({
+          message: 'Failed to parse Claude CLI response as JSON',
+          code: 'JSON_PARSE_ERROR',
+          stderr: result.stdout.slice(0, 500), // Include part of stdout for debugging
+        });
+      }
       
       // Check for errors
       if (jsonResponse.is_error) {
