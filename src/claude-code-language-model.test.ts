@@ -4,6 +4,7 @@ import { ClaudeCodeCLI } from './claude-code-cli';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
 import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
 import { ClaudeCodeError } from './errors';
+import type { ClaudeCodeEvent, ClaudeCodeAssistantEvent, ClaudeCodeResultEvent, ClaudeCodeErrorEvent } from './types';
 
 vi.mock('./claude-code-cli');
 
@@ -49,7 +50,7 @@ describe('ClaudeCodeLanguageModel', () => {
         prompt: [
           { role: 'user', content: [{ type: 'text', text: 'Say hello' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doGenerate(options);
@@ -85,7 +86,7 @@ describe('ClaudeCodeLanguageModel', () => {
           { role: 'system', content: 'You are helpful' },
           { role: 'user', content: [{ type: 'text', text: 'Hello' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doGenerate(options);
@@ -106,7 +107,7 @@ describe('ClaudeCodeLanguageModel', () => {
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       await expect(model.doGenerate(options)).rejects.toThrow(
@@ -132,7 +133,7 @@ describe('ClaudeCodeLanguageModel', () => {
           { role: 'assistant', content: [{ type: 'text', text: 'Hi there!' }] },
           { role: 'user', content: [{ type: 'text', text: 'My name is Alice' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       await model.doGenerate(options);
@@ -476,15 +477,17 @@ describe('ClaudeCodeLanguageModel', () => {
 
   describe('doStream', () => {
     it('should stream text response using spawn CLI', async () => {
-      const mockStream = async function* () {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
         yield {
           type: 'assistant',
+          subtype: 'message_delta',
           message: {
             content: [{ text: 'Hello world!' }]
           }
-        };
+        } as ClaudeCodeAssistantEvent;
         yield {
           type: 'result',
+          subtype: 'success',
           result: 'Hello world!',
           session_id: 'sess_456',
           is_error: false,
@@ -494,14 +497,14 @@ describe('ClaudeCodeLanguageModel', () => {
             cache_creation_input_tokens: 0,
             cache_read_input_tokens: 0
           }
-        };
+        } as ClaudeCodeResultEvent;
       };
       
       vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doStream(options);
@@ -525,21 +528,22 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle streaming errors', async () => {
-      const mockStream = async function* () {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
         yield {
           type: 'error',
+          subtype: 'error',
           error: {
             message: 'Stream error',
             code: 'STREAM_ERROR'
           }
-        };
+        } as ClaudeCodeErrorEvent;
       };
       
       vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doStream(options);
@@ -549,27 +553,31 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle object-json mode in streaming', async () => {
-      const mockStream = async function* () {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
         yield {
           type: 'assistant',
+          subtype: 'message_delta',
           message: {
             content: [{ text: 'Here is the JSON:\n```json\n{' }]
           }
-        };
+        } as ClaudeCodeAssistantEvent;
         yield {
           type: 'assistant',
+          subtype: 'message_delta',
           message: {
             content: [{ text: '"name": "Alice", "age": 25}' }]
           }
-        };
+        } as ClaudeCodeAssistantEvent;
         yield {
           type: 'assistant',
+          subtype: 'message_delta',
           message: {
             content: [{ text: '\n```' }]
           }
-        };
+        } as ClaudeCodeAssistantEvent;
         yield {
           type: 'result',
+          subtype: 'success',
           result: 'Here is the JSON:\n```json\n{"name": "Alice", "age": 25}\n```',
           session_id: 'sess_789',
           is_error: false,
@@ -577,7 +585,7 @@ describe('ClaudeCodeLanguageModel', () => {
             input_tokens: 20,
             output_tokens: 10
           }
-        };
+        } as ClaudeCodeResultEvent;
       };
       
       vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());

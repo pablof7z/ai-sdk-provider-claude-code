@@ -156,7 +156,6 @@ async function main() {
     console.log('\n📚 Next steps:');
     console.log('- Try generate-object-nested.ts for complex structures');
     console.log('- See generate-object-constraints.ts for validation examples');
-    console.log('- Check generate-object-streaming.ts for real-time generation');
   } catch (error) {
     console.error('❌ Error:', error);
     console.log('\n💡 Tip: Make sure the Claude Code CLI is authenticated with: claude login');

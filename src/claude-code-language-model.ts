@@ -48,6 +48,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       rawPrompt: unknown;
       rawSettings: Record<string, unknown>;
     };
+    rawResponse?: {
+      headers?: Record<string, string>;
+    };
     warnings?: LanguageModelV1CallWarning[];
     providerMetadata?: LanguageModelV1ProviderMetadata;
   }> {
@@ -139,6 +142,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
             sessionId: this.sessionId,
           },
         },
+        rawResponse: {
+          headers: {},
+        },
         warnings: [],
         providerMetadata: {
           'claude-code': {
@@ -174,6 +180,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     rawCall: {
       rawPrompt: unknown;
       rawSettings: Record<string, unknown>;
+    };
+    rawResponse?: {
+      headers?: Record<string, string>;
     };
     warnings?: LanguageModelV1CallWarning[];
   }> {
@@ -293,6 +302,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           model: this.modelId,
           sessionId: this.sessionId,
         },
+      },
+      rawResponse: {
+        headers: {},
       },
       warnings: [],
     };

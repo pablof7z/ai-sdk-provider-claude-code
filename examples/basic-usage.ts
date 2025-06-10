@@ -19,7 +19,7 @@ async function main() {
       console.log('\nProvider metadata:');
       console.log(`- Session ID: ${metadata.sessionId}`);
       console.log(`- Duration: ${metadata.durationMs}ms`);
-      console.log(`- Cost: $${metadata.costUsd?.toFixed(4) || '0.00'}`);
+      console.log(`- Cost: $${typeof metadata.costUsd === 'number' ? metadata.costUsd.toFixed(4) : '0.00'}`);
       console.log('  (Pro/Max subscribers: covered by subscription, API key users: actual charge)');
     }
   } catch (error) {

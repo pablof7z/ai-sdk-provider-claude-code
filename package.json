@@ -46,13 +46,9 @@
         "example:streaming": "npm run build && npx tsx examples/streaming.ts",
         "example:conversation": "npm run build && npx tsx examples/conversation-history.ts",
         "example:config": "npm run build && npx tsx examples/custom-config.ts",
-        "example:object": "npm run build && npx tsx examples/generate-object.ts",
         "example:object:basic": "npm run build && npx tsx examples/generate-object-basic.ts",
         "example:object:nested": "npm run build && npx tsx examples/generate-object-nested.ts",
-        "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts",
-        "example:object:patterns": "npm run build && npx tsx examples/generate-object-patterns.ts",
-        "example:object:recovery": "npm run build && npx tsx examples/generate-object-recovery.ts",
-        "example:object:interactive": "npm run build && npx tsx examples/generate-object-interactive.ts"
+        "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts"
     },
     "dependencies": {
         "@ai-sdk/provider": "1.1.3",
