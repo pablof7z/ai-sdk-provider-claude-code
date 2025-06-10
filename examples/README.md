@@ -13,6 +13,8 @@ examples/
 ├── custom-config.ts          # Configuration options
 ├── timeout-config.ts         # Timeout configuration examples
 ├── test-session.ts           # Session management
+├── abort-signal.ts           # Request cancellation with AbortController
+├── limitations.ts            # Provider limitations and unsupported features
 ├── integration-test.ts       # Comprehensive tests
 └── check-cli.ts              # CLI verification utility
 ```
@@ -74,6 +76,20 @@ npx tsx examples/test-session.ts
 ```
 **Why included**: Shows alternative conversation approach using Claude's session IDs.
 
+### 7. Request Cancellation (`abort-signal.ts`)
+Shows how to cancel in-progress requests using AbortController and AbortSignal.
+```bash
+npx tsx examples/abort-signal.ts
+```
+**Why included**: Essential for implementing timeouts, user cancellations, and cleanup.
+
+### 8. Provider Limitations (`limitations.ts`)
+Explicitly demonstrates which AI SDK features are NOT supported by Claude Code CLI.
+```bash
+npx tsx examples/limitations.ts
+```
+**Why included**: Helps users understand what parameters are ignored and why.
+
 ## Testing & Verification
 
 ### Integration Test (`integration-test.ts`)
@@ -89,6 +105,28 @@ Utility to check if Claude CLI is properly installed and authenticated.
 npx tsx examples/check-cli.ts
 ```
 **Why included**: Essential troubleshooting tool for setup issues.
+
+## Error Handling
+
+All examples include basic error handling. Common error scenarios you might encounter:
+
+1. **Authentication errors**: Run `claude login` if you see authentication failures
+2. **CLI not found**: Install with `npm install -g @anthropic-ai/claude-code`
+3. **Timeout errors**: Increase timeout in provider settings (see `timeout-config.ts`)
+4. **Invalid models**: Use only "opus" or "sonnet"
+
+For error handling, you can use the `isAuthenticationError` helper:
+```typescript
+import { isAuthenticationError } from '../dist/index.js';
+
+try {
+  // Your code here
+} catch (error) {
+  if (isAuthenticationError(error)) {
+    console.error('Please run: claude login');
+  }
+}
+```
 
 ## Implementation Notes
 

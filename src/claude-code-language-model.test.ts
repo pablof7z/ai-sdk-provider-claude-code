@@ -3,6 +3,7 @@ import { ClaudeCodeLanguageModel } from './claude-code-language-model';
 import { ClaudeCodeCLI } from './claude-code-cli';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
 import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
+import { ClaudeCodeError } from './errors';
 
 vi.mock('./claude-code-cli');
 
@@ -175,6 +176,175 @@ describe('ClaudeCodeLanguageModel', () => {
       await expect(model.doGenerate(options)).rejects.toThrow(UnsupportedFunctionalityError);
       await expect(model.doGenerate(options)).rejects.toThrow("'object-tool mode' functionality not supported");
     });
+
+    it('should handle rate limit errors', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: '',
+        stderr: 'Rate limit exceeded',
+        exitCode: 429,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'Claude CLI failed with exit code 429'
+      );
+    });
+
+    it('should handle network errors', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: '',
+        stderr: 'Network error: Connection failed',
+        exitCode: 1,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'Claude CLI failed with exit code 1'
+      );
+    });
+
+    it('should handle timeout errors', async () => {
+      vi.spyOn(mockCLI, 'execute').mockRejectedValue(
+        new ClaudeCodeError({
+          message: 'Claude CLI timed out after 120 seconds',
+          code: 'TIMEOUT',
+          promptExcerpt: 'Test',
+        })
+      );
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'Claude CLI timed out after 120 seconds'
+      );
+    });
+
+    it('should handle malformed JSON responses', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: 'invalid json response',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow();
+    });
+
+    it('should handle empty responses', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: JSON.stringify({}),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+      expect(result.text).toBe('');
+    });
+
+    it('should handle CLI process spawn errors', async () => {
+      vi.spyOn(mockCLI, 'execute').mockRejectedValue(
+        new Error('spawn claude ENOENT')
+      );
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'spawn claude ENOENT'
+      );
+    });
+
+    it('should handle result with error flag', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: JSON.stringify({
+          type: 'result',
+          subtype: 'error',
+          result: '',
+          is_error: true,
+          error: 'Processing failed',
+          usage: { input_tokens: 0, output_tokens: 0 }
+        }),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'Processing failed'
+      );
+    });
+
+    it('should handle AbortSignal cancellation', async () => {
+      const abortController = new AbortController();
+      
+      vi.spyOn(mockCLI, 'execute').mockImplementation(async (_prompt, _config, options) => {
+        // Simulate some processing time
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Check if aborted
+        if (options?.signal?.aborted) {
+          throw new Error('The operation was aborted');
+        }
+        
+        return {
+          stdout: JSON.stringify({
+            type: 'result',
+            result: 'Success',
+            is_error: false,
+            usage: { input_tokens: 0, output_tokens: 0 }
+          }),
+          stderr: '',
+          exitCode: 0,
+        };
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+        abortSignal: abortController.signal,
+      };
+
+      // Abort after 25ms
+      setTimeout(() => abortController.abort(), 25);
+
+      await expect(model.doGenerate(options)).rejects.toThrow(
+        'The operation was aborted'
+      );
+    });
   });
 
   describe('doStream', () => {
@@ -282,6 +452,93 @@ describe('ClaudeCodeLanguageModel', () => {
 
       await expect(model.doStream(options)).rejects.toThrow(UnsupportedFunctionalityError);
       await expect(model.doStream(options)).rejects.toThrow("'object-tool mode' functionality not supported");
+    });
+
+    it('should handle streaming timeout errors', async () => {
+      const mockStream = async function* () {
+        throw new ClaudeCodeError({
+          message: 'Claude CLI timed out after 120 seconds',
+          code: 'TIMEOUT',
+          promptExcerpt: 'Test stream',
+        });
+      };
+      
+      vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test stream' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doStream(options);
+      const reader = result.stream.getReader();
+
+      await expect(reader.read()).rejects.toThrow('Claude CLI timed out after 120 seconds');
+    });
+
+    it('should handle streaming abort signal', async () => {
+      const abortController = new AbortController();
+      let shouldAbort = false;
+      
+      const mockStream = async function* () {
+        // Simulate some initial data
+        yield {
+          type: 'assistant',
+          message: {
+            content: [{ text: 'Starting...' }]
+          }
+        };
+        
+        // Wait a bit to allow abort to happen
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        // Check if we should abort
+        if (shouldAbort) {
+          throw new Error('The operation was aborted');
+        }
+        
+        // More data
+        yield {
+          type: 'assistant',
+          message: {
+            content: [{ text: 'More text' }]
+          }
+        };
+      };
+      
+      vi.spyOn(mockCLI, 'stream').mockImplementation((prompt, config, options) => {
+        // Pass abort signal to our mock
+        if (options?.signal) {
+          options.signal.addEventListener('abort', () => {
+            shouldAbort = true;
+          });
+        }
+        return mockStream();
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test stream' }] }],
+        mode: { type: 'regular' },
+        inputFormat: 'messages',
+        abortSignal: abortController.signal,
+      };
+
+      const result = await model.doStream(options);
+      const reader = result.stream.getReader();
+
+      // Read first chunk
+      const { value: firstChunk } = await reader.read();
+      expect(firstChunk).toMatchObject({ type: 'text-delta', textDelta: 'Starting...' });
+
+      // Abort the operation
+      abortController.abort();
+
+      // Give time for abort to propagate
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      // Next read should fail
+      await expect(reader.read()).rejects.toThrow('The operation was aborted');
     });
   });
 
