@@ -224,5 +224,23 @@ describe('ClaudeCodeCLI', () => {
         }
       }).rejects.toThrow('Claude CLI exited with code 1');
     });
+
+    it('should handle process spawn failure', async () => {
+      mockSpawn.mockImplementation(() => {
+        throw new Error('spawn claude ENOENT');
+      });
+
+      await expect(async () => {
+        const events = [];
+        for await (const event of cli.stream('test', {
+          model: 'opus',
+          cliPath: 'invalid-claude-path',
+          skipPermissions: true,
+          disallowedTools: [],
+        })) {
+          events.push(event);
+        }
+      }).rejects.toThrow('spawn claude ENOENT');
+    });
   });
 });
