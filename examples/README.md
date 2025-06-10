@@ -6,17 +6,21 @@ This directory contains curated examples demonstrating key features of the Claud
 
 ```
 examples/
-├── README.md                 # This documentation
-├── basic-usage.ts            # Simple text generation
-├── streaming.ts              # Streaming examples
-├── conversation-history.ts   # Multi-turn conversations
-├── custom-config.ts          # Configuration options
-├── timeout-config.ts         # Timeout configuration examples
-├── test-session.ts           # Session management
-├── abort-signal.ts           # Request cancellation with AbortController
-├── limitations.ts            # Provider limitations and unsupported features
-├── integration-test.ts       # Comprehensive tests
-└── check-cli.ts              # CLI verification utility
+├── README.md                      # This documentation
+├── basic-usage.ts                 # Simple text generation
+├── streaming.ts                   # Streaming examples
+├── conversation-history.ts        # Multi-turn conversations
+├── custom-config.ts               # Configuration options
+├── timeout-config.ts              # Timeout configuration examples
+├── test-session.ts                # Session management
+├── abort-signal.ts                # Request cancellation with AbortController
+├── limitations.ts                 # Provider limitations and unsupported features
+├── generate-object.ts             # Object generation overview
+├── generate-object-basic.ts       # Basic object patterns
+├── generate-object-nested.ts      # Complex nested structures
+├── generate-object-constraints.ts # Validation constraints
+├── integration-test.ts            # Comprehensive tests
+└── check-cli.ts                   # CLI verification utility
 ```
 
 ## Prerequisites
@@ -89,6 +93,36 @@ Explicitly demonstrates which AI SDK features are NOT supported by Claude Code C
 npx tsx examples/limitations.ts
 ```
 **Why included**: Helps users understand what parameters are ignored and why.
+
+## Object Generation Examples
+
+### 9. Object Generation Overview (`generate-object.ts`)
+Introduction to object generation with JSON schema validation.
+```bash
+npx tsx examples/generate-object.ts
+```
+**Why included**: Shows the basics of structured data generation.
+
+### 10. Basic Object Patterns (`generate-object-basic.ts`)
+Simple schemas with primitives, arrays, and optional fields.
+```bash
+npx tsx examples/generate-object-basic.ts
+```
+**Why included**: Essential patterns for getting started with object generation.
+
+### 11. Nested Structures (`generate-object-nested.ts`)
+Complex hierarchical data like organizations, orders, and configurations.
+```bash
+npx tsx examples/generate-object-nested.ts
+```
+**Why included**: Demonstrates real-world data modeling.
+
+### 12. Validation Constraints (`generate-object-constraints.ts`)
+Using Zod's validation features for enums, ranges, and patterns.
+```bash
+npx tsx examples/generate-object-constraints.ts
+```
+**Why included**: Shows how to enforce data quality with constraints.
 
 ## Testing & Verification
 

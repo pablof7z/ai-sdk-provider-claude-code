@@ -116,10 +116,48 @@ The unified approach provides:
 - **Compatibility**: Works in all Node.js environments without optional dependencies
 - **Maintainability**: One implementation to test and maintain
 
+## Object Generation Troubleshooting
+
+### 1. Invalid JSON Response
+
+**Problem**: Claude returns text instead of valid JSON when using `generateObject`.
+
+**Solutions**:
+- Simplify your schema - start with fewer fields
+- Make your prompt more explicit: "Generate only valid JSON"
+- Use descriptive field names and add `.describe()` to schema fields
+- Implement retry logic for production use
+
+### 2. Object Generation Takes Full Response Time
+
+**Problem**: `streamObject` doesn't stream in real-time like text generation.
+
+**Expected Behavior**: This is normal. Since we use prompt engineering (not native JSON mode), the provider must wait for the complete response before parsing JSON. Use `generateObject` for clarity.
+
+### 3. Missing Required Fields
+
+**Problem**: Generated objects missing required properties.
+
+**Solutions**:
+- Emphasize requirements in your prompt
+- Use clear, descriptive field names
+- Add field descriptions: `z.string().describe('User full name')`
+
+### 4. Type Mismatches
+
+**Problem**: String when expecting number, wrong date format, etc.
+
+**Solutions**:
+- Be explicit in descriptions: "age as a number" not just "age"
+- For dates, specify format: `.describe('Date in YYYY-MM-DD format')`
+- Use regex patterns: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
+
 ## Known Limitations
 
 1. **No Image Support**: CLI doesn't support image inputs
 2. **Process Limits**: Configurable concurrent process limit (default: 4) for system resource management
+3. **No Object-Tool Mode**: Only `object-json` mode supported via `generateObject`/`streamObject`
+4. **Object Generation Requires Full Response**: Cannot stream JSON in real-time
 
 ## References
 
