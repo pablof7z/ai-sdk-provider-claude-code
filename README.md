@@ -381,6 +381,207 @@ for await (const partial of partialObjectStream) {
 
 **Note**: The `object-tool` mode is not supported. Only `object-json` mode (via `generateObject`/`streamObject`) is available.
 
+## Object Generation Cookbook
+
+### Quick Start Examples
+
+#### Basic Objects
+Start with simple schemas and clear prompts:
+```typescript
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    name: z.string(),
+    age: z.number(),
+    email: z.string().email(),
+  }),
+  prompt: 'Generate a developer profile',
+});
+```
+[Full example](examples/generate-object-basic.ts)
+
+#### Nested Structures
+Build complex hierarchical data:
+```typescript
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    company: z.object({
+      departments: z.array(z.object({
+        name: z.string(),
+        teams: z.array(z.object({
+          name: z.string(),
+          members: z.number(),
+        })),
+      })),
+    }),
+  }),
+  prompt: 'Generate a company org structure',
+});
+```
+[Full example](examples/generate-object-nested.ts)
+
+#### Constrained Generation
+Use Zod's validation features:
+```typescript
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    status: z.enum(['pending', 'active', 'completed']),
+    priority: z.number().min(1).max(5),
+    tags: z.array(z.string()).min(1).max(3),
+  }),
+  prompt: 'Generate a task with medium priority',
+});
+```
+[Full example](examples/generate-object-constraints.ts)
+
+#### Streaming Objects
+Get real-time updates during generation:
+```typescript
+const { partialObjectStream } = await streamObject({
+  model: claudeCode('sonnet'),
+  schema: yourSchema,
+  prompt: 'Generate data',
+});
+
+for await (const partial of partialObjectStream) {
+  console.log('Progress:', partial);
+}
+```
+[Full example](examples/generate-object-streaming.ts)
+
+### Best Practices
+
+1. **Start Simple**: Begin with basic schemas and add complexity gradually
+2. **Clear Prompts**: Be specific about what you want generated
+3. **Use Descriptions**: Add `.describe()` to schema fields for better results
+4. **Handle Errors**: Implement retry logic for production use
+5. **Test Schemas**: Validate your schemas work before deployment
+
+### Common Patterns
+
+- **API Responses**: [REST APIs, GraphQL, webhooks](examples/generate-object-real-world.ts)
+- **Configuration Files**: [App settings, database configs](examples/generate-object-real-world.ts)
+- **Data Models**: [User profiles, products, orders](examples/generate-object-nested.ts)
+- **Error Recovery**: [Retries, fallbacks, debugging](examples/generate-object-recovery.ts)
+
+### Interactive Testing
+
+Try the interactive CLI tool to experiment with schemas:
+```bash
+npx tsx examples/generate-object-interactive.ts
+```
+
+## Object Generation Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. Invalid JSON Response
+**Problem**: Claude returns text instead of valid JSON
+
+**Solutions**:
+- Simplify your schema - start with fewer fields
+- Make your prompt more explicit: "Generate only valid JSON"
+- Check the schema for overly complex constraints
+- Use the retry pattern:
+
+```typescript
+async function generateWithRetry(schema, prompt, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await generateObject({ model, schema, prompt });
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+    }
+  }
+}
+```
+
+#### 2. Missing Required Fields
+**Problem**: Generated objects missing required properties
+
+**Solutions**:
+- Emphasize requirements in your prompt
+- Use descriptive field names
+- Add field descriptions with `.describe()`
+- Example:
+```typescript
+z.object({
+  // Bad: vague field name
+  val: z.number(),
+  
+  // Good: clear field name with description
+  totalPrice: z.number().describe('Total price in USD'),
+})
+```
+
+#### 3. Type Mismatches
+**Problem**: String when expecting number, wrong date format, etc.
+
+**Solutions**:
+- Be explicit in descriptions: "age as a number" not just "age"
+- For dates, specify format: `.describe('Date in YYYY-MM-DD format')`
+- Use regex patterns for strings: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
+
+#### 4. Schema Too Complex
+**Problem**: Very complex schemas fail or timeout
+
+**Solutions**:
+- Break into smaller parts and combine:
+```typescript
+// Instead of one huge schema, compose smaller ones
+const userSchema = z.object({ /* user fields */ });
+const settingsSchema = z.object({ /* settings */ });
+const profileSchema = z.object({
+  user: userSchema,
+  settings: settingsSchema,
+});
+```
+- Generate in steps and merge results
+- Increase timeout for complex generations
+
+#### 5. Inconsistent Results
+**Problem**: Same prompt gives different structure each time
+
+**Solutions**:
+- Make schemas more constrained (use enums, min/max)
+- Provide example in prompt
+- Use consistent field naming conventions
+- Consider using `opus` model for complex schemas
+
+### Debugging Tips
+
+1. **Enable Debug Logging**:
+```typescript
+const { object, usage, warnings } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: yourSchema,
+  prompt: yourPrompt,
+});
+console.log('Tokens used:', usage);
+console.log('Warnings:', warnings);
+```
+
+2. **Test Schema Separately**:
+```typescript
+// Validate your schema works
+const testData = { /* your test object */ };
+try {
+  schema.parse(testData);
+  console.log('Schema is valid');
+} catch (e) {
+  console.log('Schema errors:', e.errors);
+}
+```
+
+3. **Progressive Enhancement**:
+Start with minimal schema, test, then add fields one by one
+
+4. **Check Examples**:
+Review our [error handling examples](examples/generate-object-recovery.ts) for recovery strategies
+
 ## Limitations
 
 - **No image support**: The Claude Code CLI doesn't support image inputs
@@ -435,7 +636,14 @@ ai-sdk-provider-claude-code/
 │   ├── custom-config.ts               # Provider configuration options
 │   ├── timeout-config.ts              # Timeout configuration examples
 │   ├── conversation-history.ts        # Multi-turn conversation with message history
-│   ├── generate-object.ts             # Object generation with JSON schemas
+│   ├── generate-object.ts             # Original object generation example
+│   ├── generate-object-basic.ts       # Basic object generation patterns
+│   ├── generate-object-nested.ts      # Complex nested structures
+│   ├── generate-object-constraints.ts # Validation and constraints
+│   ├── generate-object-streaming.ts   # Streaming object generation
+│   ├── generate-object-real-world.ts  # Real-world API patterns
+│   ├── generate-object-recovery.ts    # Error handling strategies
+│   ├── generate-object-interactive.ts # Interactive CLI tool
 │   ├── test-session.ts                # Session management testing
 │   ├── integration-test.ts            # Comprehensive integration tests
 │   └── check-cli.ts                   # CLI installation verification
