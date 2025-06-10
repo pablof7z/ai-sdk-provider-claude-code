@@ -12,6 +12,7 @@
 - **Provider Metadata**: Rich metadata including session IDs, timing, costs, and detailed usage
 - **Streaming**: Unified spawn-based implementation with zero-latency streaming using readline interface
 - **Timeout Configuration**: Fully configurable timeouts (1s-10min) optimized for Claude Opus 4
+- **Object Generation**: Support for `generateObject`/`streamObject` via prompt engineering with Zod schema validation
 
 ### Implementation Details
 - **Unified Architecture**: Uses `spawn` with stdin communication for both streaming and non-streaming
@@ -20,6 +21,7 @@
 - **Type Safety**: Complete TypeScript implementation with proper interfaces and type guards
 - **Session Management**: Working session resumption with `--resume` flag
 - **Process Management**: Concurrent request handling with configurable process limits
+- **JSON Schema Validation**: Full Zod schema integration for structured data generation
 
 ## ⚠️ Limitations
 
@@ -31,12 +33,13 @@
 ### Session Management
 - Claude CLI returns new session ID for each interaction (even with --resume)
 - Context is maintained correctly despite new IDs
-- Session IDs accessible via `experimental_providerMetadata: true`
+- Session IDs accessible via `providerMetadata`
 
 ### Platform Support
 - Requires Node.js environment with `child_process` support
 - Limited to text generation (no image support due to CLI limitation)
 - Requires local Claude Code CLI installation and authentication
+- Object generation requires complete response (no real-time streaming for JSON)
 
 ## 📁 Project Structure
 
@@ -51,12 +54,19 @@
   └── types.ts                       # TypeScript types with validation schemas
 
 /examples
+  ├── README.md                      # Examples documentation
   ├── basic-usage.ts                 # Simple text generation with metadata
   ├── streaming.ts                   # Streaming response demo
   ├── custom-config.ts               # Provider configuration options
   ├── timeout-config.ts              # Timeout configuration examples
   ├── conversation-history.ts        # Multi-turn conversation with message history
+  ├── generate-object.ts             # Original object generation example
+  ├── generate-object-basic.ts       # Basic object generation patterns
+  ├── generate-object-nested.ts      # Complex nested structures
+  ├── generate-object-constraints.ts # Validation and constraints
   ├── test-session.ts                # Session management testing
+  ├── abort-signal.ts                # Request cancellation examples
+  ├── limitations.ts                 # Provider limitations demo
   ├── integration-test.ts            # Comprehensive integration tests
   └── check-cli.ts                   # CLI installation verification
 
@@ -79,6 +89,8 @@
 7. **✅ Provider Metadata**: Rich metadata including costs, timing, and session information
 8. **✅ Comprehensive Testing**: All tests updated and passing with new architecture
 9. **✅ Documentation**: Complete documentation with streaming improvements
+10. **✅ Object Generation**: Full support for structured data generation with JSON schema validation
+11. **✅ AI SDK v4 Compatibility**: Updated to latest AI SDK version with all required fields
 
 ### 🎯 Current Status
 - **Production Ready**: Full AI SDK provider implementation
@@ -99,11 +111,14 @@
 - ✅ Token usage tracking and cost information
 - ✅ TypeScript type safety throughout
 - ✅ Concurrent request handling with process pooling
+- ✅ Object generation with Zod schema validation
+- ✅ AI SDK v4 compatibility with latest interfaces
 
 ### Known Characteristics
 - Session IDs change on each interaction (Claude CLI behavior - context still maintained)
 - Uses spawn with stdin communication for both streaming and non-streaming
 - Readline interface provides zero-latency streaming without external dependencies
+- Object generation waits for complete response before parsing JSON (no real-time streaming)
 
 ## 📝 Usage Notes
 

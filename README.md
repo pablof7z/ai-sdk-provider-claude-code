@@ -194,14 +194,13 @@ import { generateText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 
 // First message
-const { text, experimental_providerMetadata } = await generateText({
+const { text, providerMetadata } = await generateText({
   model: claudeCode('sonnet'),
   messages: [{ role: 'user', content: 'My name is Bob.' }],
-  experimental_providerMetadata: true,
 });
 
 // Resume with session ID
-const sessionId = experimental_providerMetadata?.['claude-code']?.sessionId;
+const sessionId = providerMetadata?.['claude-code']?.sessionId;
 
 const { text: response } = await generateText({
   model: claudeCode('sonnet', { sessionId }),
@@ -311,13 +310,12 @@ The provider uses a unified spawn-based architecture with readline interface for
 The provider returns rich metadata including token usage, timing, and cost information:
 
 ```typescript
-const { text, usage, experimental_providerMetadata } = await generateText({
+const { text, usage, providerMetadata } = await generateText({
   model: claudeCode('sonnet'),
   prompt: 'Hello!',
-  experimental_providerMetadata: true,
 });
 
-console.log(experimental_providerMetadata);
+console.log(providerMetadata);
 // {
 //   "claude-code": {
 //     "sessionId": "abc-123-def",
@@ -449,18 +447,10 @@ const { object } = await generateObject({
 
 ### Common Patterns
 
-- **API Responses**: [Simple REST, GraphQL, webhooks](examples/generate-object-patterns.ts)
-- **Configuration Files**: [App settings, database schemas](examples/generate-object-patterns.ts)
 - **Data Models**: [User profiles, products, orders](examples/generate-object-nested.ts)
-- **Error Recovery**: [Retries, fallbacks, debugging](examples/generate-object-recovery.ts)
+- **Validation**: [Enums, constraints, regex patterns](examples/generate-object-constraints.ts)
+- **Basic Objects**: [Simple schemas and arrays](examples/generate-object-basic.ts)
 - **Note**: For object generation, use `generateObject` instead of `streamObject` as streaming provides no benefits
-
-### Interactive Testing
-
-Try the interactive CLI tool to experiment with schemas:
-```bash
-npx tsx examples/generate-object-interactive.ts
-```
 
 ## Object Generation Troubleshooting
 
@@ -569,7 +559,7 @@ try {
 Start with minimal schema, test, then add fields one by one
 
 4. **Check Examples**:
-Review our [error handling examples](examples/generate-object-recovery.ts) for recovery strategies
+Review our examples for implementation patterns
 
 ## Limitations
 
@@ -620,6 +610,7 @@ ai-sdk-provider-claude-code/
 │   ├── errors.ts                      # Comprehensive error handling
 │   └── types.ts                       # TypeScript types with validation schemas
 ├── examples/
+│   ├── README.md                      # Examples documentation
 │   ├── basic-usage.ts                 # Simple text generation with metadata
 │   ├── streaming.ts                   # Streaming response demo
 │   ├── custom-config.ts               # Provider configuration options
@@ -629,10 +620,9 @@ ai-sdk-provider-claude-code/
 │   ├── generate-object-basic.ts       # Basic object generation patterns
 │   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── generate-object-constraints.ts # Validation and constraints
-│   ├── generate-object-patterns.ts    # Simple real-world patterns
-│   ├── generate-object-recovery.ts    # Error handling strategies
-│   ├── generate-object-interactive.ts # Interactive CLI tool
 │   ├── test-session.ts                # Session management testing
+│   ├── abort-signal.ts                # Request cancellation examples
+│   ├── limitations.ts                 # Provider limitations demo
 │   ├── integration-test.ts            # Comprehensive integration tests
 │   └── check-cli.ts                   # CLI installation verification
 ├── package.json
