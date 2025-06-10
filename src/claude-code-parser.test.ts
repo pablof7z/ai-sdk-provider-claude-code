@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ClaudeCodeParser } from './claude-code-parser';
-import type { ClaudeCodeEvent } from './types';
+import type { ClaudeCodeEvent, ClaudeCodeAssistantEvent, ClaudeCodeResultEvent, ClaudeCodeErrorEvent } from './types';
 
 describe('ClaudeCodeParser', () => {
   describe('extractText', () => {
@@ -126,21 +126,22 @@ describe('ClaudeCodeParser', () => {
   describe('findError', () => {
     it('should find error event', () => {
       const events: ClaudeCodeEvent[] = [
-        { type: 'assistant', message: 'Starting...' },
-        { type: 'error', error: { message: 'Something went wrong', code: 'ERR_001' } },
+        { type: 'assistant', subtype: 'message_delta', message: { content: [{ text: 'Starting...' }] } } as ClaudeCodeAssistantEvent,
+        { type: 'error', subtype: 'error', error: { message: 'Something went wrong', code: 'ERR_001' } } as ClaudeCodeErrorEvent,
       ];
 
       const error = ClaudeCodeParser.findError(events);
       expect(error).toEqual({
         type: 'error',
+        subtype: 'error',
         error: { message: 'Something went wrong', code: 'ERR_001' },
       });
     });
 
     it('should return undefined if no error', () => {
       const events: ClaudeCodeEvent[] = [
-        { type: 'assistant', message: 'Hello' },
-        { type: 'result', result: { result: 'Success' } },
+        { type: 'assistant', subtype: 'message_delta', message: { content: [{ text: 'Hello' }] } } as ClaudeCodeAssistantEvent,
+        { type: 'result', subtype: 'success', result: 'Success', is_error: false } as ClaudeCodeResultEvent,
       ];
 
       const error = ClaudeCodeParser.findError(events);

@@ -4,6 +4,7 @@ import { ClaudeCodeCLI } from './claude-code-cli';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
 import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
 import { ClaudeCodeError } from './errors';
+import type { ClaudeCodeEvent, ClaudeCodeAssistantEvent, ClaudeCodeResultEvent, ClaudeCodeErrorEvent } from './types';
 
 vi.mock('./claude-code-cli');
 
@@ -49,7 +50,7 @@ describe('ClaudeCodeLanguageModel', () => {
         prompt: [
           { role: 'user', content: [{ type: 'text', text: 'Say hello' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doGenerate(options);
@@ -85,7 +86,7 @@ describe('ClaudeCodeLanguageModel', () => {
           { role: 'system', content: 'You are helpful' },
           { role: 'user', content: [{ type: 'text', text: 'Hello' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doGenerate(options);
@@ -106,7 +107,7 @@ describe('ClaudeCodeLanguageModel', () => {
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       await expect(model.doGenerate(options)).rejects.toThrow(
@@ -132,7 +133,7 @@ describe('ClaudeCodeLanguageModel', () => {
           { role: 'assistant', content: [{ type: 'text', text: 'Hi there!' }] },
           { role: 'user', content: [{ type: 'text', text: 'My name is Alice' }] },
         ],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       await model.doGenerate(options);
@@ -144,18 +145,145 @@ describe('ClaudeCodeLanguageModel', () => {
       );
     });
 
-    it('should throw error for object-json mode', async () => {
+    it('should handle object-json mode with schema', async () => {
+      const mockExecute = vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: JSON.stringify({
+          type: 'result',
+          result: 'Here is the JSON object:\n```json\n{"name": "John", "age": 30}\n```',
+          session_id: 'sess_123',
+          is_error: false,
+          usage: { input_tokens: 20, output_tokens: 10 }
+        }),
+        stderr: '',
+        exitCode: 0,
+      });
+
       const options: LanguageModelV1CallOptions = {
-        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate a person object' }] }],
         mode: {
           type: 'object-json',
-          schema: { type: 'object', properties: { name: { type: 'string' } } },
+          schema: { 
+            type: 'object', 
+            properties: { 
+              name: { type: 'string' },
+              age: { type: 'number' }
+            },
+            required: ['name', 'age']
+          },
+          name: 'Person',
+          description: 'A person object with name and age'
         },
         inputFormat: 'messages',
       };
 
-      await expect(model.doGenerate(options)).rejects.toThrow(UnsupportedFunctionalityError);
-      await expect(model.doGenerate(options)).rejects.toThrow("'object-json mode' functionality not supported");
+      const result = await model.doGenerate(options);
+
+      // Verify the prompt includes JSON instructions
+      expect(mockExecute).toHaveBeenCalledWith(
+        expect.stringContaining('Generate a person object'),
+        expect.any(Object),
+        expect.any(Object)
+      );
+      
+      const actualPrompt = mockExecute.mock.calls[0][0];
+      expect(actualPrompt).toContain('IMPORTANT: You must respond with valid JSON');
+      expect(actualPrompt).toContain('A person object with name and age');
+      expect(actualPrompt).toContain('The JSON object represents: Person');
+      expect(actualPrompt).toContain('"required":');
+      expect(actualPrompt).toContain('"name"');
+      expect(actualPrompt).toContain('"age"');
+
+      // Verify JSON extraction
+      expect(result.text).toBe('{"name": "John", "age": 30}');
+      expect(result.finishReason).toBe('stop');
+    });
+
+    it('should handle object-json mode without schema', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: JSON.stringify({
+          type: 'result',
+          result: '{"items": ["apple", "banana"], "total": 2}',
+          is_error: false,
+          usage: { input_tokens: 15, output_tokens: 8 }
+        }),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'List some fruits' }] }],
+        mode: { type: 'object-json' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+      expect(result.text).toBe('{"items": ["apple", "banana"], "total": 2}');
+    });
+
+    it('should extract JSON from various formats', async () => {
+      const testCases = [
+        {
+          input: 'Plain JSON: {"key": "value"}',
+          expected: '{"key": "value"}'
+        },
+        {
+          input: 'Here is the result:\n\n```json\n{"nested": {"data": 123}}\n```\n\nThat\'s the JSON.',
+          expected: '{"nested": {"data": 123}}'
+        },
+        {
+          input: 'Array response: [1, 2, 3, 4, 5]',
+          expected: '[1, 2, 3, 4, 5]'
+        },
+        {
+          input: '```\n{"code": "block", "without": "json"}\n```',
+          expected: '{"code": "block", "without": "json"}'
+        }
+      ];
+
+      for (const testCase of testCases) {
+        vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+          stdout: JSON.stringify({
+            type: 'result',
+            result: testCase.input,
+            is_error: false,
+            usage: { input_tokens: 10, output_tokens: 5 }
+          }),
+          stderr: '',
+          exitCode: 0,
+        });
+
+        const options: LanguageModelV1CallOptions = {
+          prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+          mode: { type: 'object-json' },
+          inputFormat: 'messages',
+        };
+
+        const result = await model.doGenerate(options);
+        expect(result.text).toBe(testCase.expected);
+      }
+    });
+
+    it('should handle invalid JSON gracefully', async () => {
+      vi.spyOn(mockCLI, 'execute').mockResolvedValue({
+        stdout: JSON.stringify({
+          type: 'result',
+          result: 'This is not valid JSON at all',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 }
+        }),
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const options: LanguageModelV1CallOptions = {
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+        mode: { type: 'object-json' },
+        inputFormat: 'messages',
+      };
+
+      const result = await model.doGenerate(options);
+      // Should return original text when JSON parsing fails
+      expect(result.text).toBe('This is not valid JSON at all');
     });
 
     it('should throw error for object-tool mode', async () => {
@@ -349,15 +477,17 @@ describe('ClaudeCodeLanguageModel', () => {
 
   describe('doStream', () => {
     it('should stream text response using spawn CLI', async () => {
-      const mockStream = async function* () {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
         yield {
           type: 'assistant',
+          subtype: 'message_delta',
           message: {
             content: [{ text: 'Hello world!' }]
           }
-        };
+        } as ClaudeCodeAssistantEvent;
         yield {
           type: 'result',
+          subtype: 'success',
           result: 'Hello world!',
           session_id: 'sess_456',
           is_error: false,
@@ -367,14 +497,14 @@ describe('ClaudeCodeLanguageModel', () => {
             cache_creation_input_tokens: 0,
             cache_read_input_tokens: 0
           }
-        };
+        } as ClaudeCodeResultEvent;
       };
       
       vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doStream(options);
@@ -398,21 +528,22 @@ describe('ClaudeCodeLanguageModel', () => {
     });
 
     it('should handle streaming errors', async () => {
-      const mockStream = async function* () {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
         yield {
           type: 'error',
+          subtype: 'error',
           error: {
             message: 'Stream error',
             code: 'STREAM_ERROR'
           }
-        };
+        } as ClaudeCodeErrorEvent;
       };
       
       vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
 
       const options: LanguageModelV1CallOptions = {
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }],
-        mode: 'regular',
+        mode: { type: 'regular' },
       };
 
       const result = await model.doStream(options);
@@ -421,18 +552,74 @@ describe('ClaudeCodeLanguageModel', () => {
       await expect(reader.read()).rejects.toThrow('Stream error');
     });
 
-    it('should throw error for object-json mode in streaming', async () => {
+    it('should handle object-json mode in streaming', async () => {
+      const mockStream = async function* (): AsyncGenerator<ClaudeCodeEvent> {
+        yield {
+          type: 'assistant',
+          subtype: 'message_delta',
+          message: {
+            content: [{ text: 'Here is the JSON:\n```json\n{' }]
+          }
+        } as ClaudeCodeAssistantEvent;
+        yield {
+          type: 'assistant',
+          subtype: 'message_delta',
+          message: {
+            content: [{ text: '"name": "Alice", "age": 25}' }]
+          }
+        } as ClaudeCodeAssistantEvent;
+        yield {
+          type: 'assistant',
+          subtype: 'message_delta',
+          message: {
+            content: [{ text: '\n```' }]
+          }
+        } as ClaudeCodeAssistantEvent;
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Here is the JSON:\n```json\n{"name": "Alice", "age": 25}\n```',
+          session_id: 'sess_789',
+          is_error: false,
+          usage: {
+            input_tokens: 20,
+            output_tokens: 10
+          }
+        } as ClaudeCodeResultEvent;
+      };
+      
+      vi.spyOn(mockCLI, 'stream').mockReturnValue(mockStream());
+
       const options: LanguageModelV1CallOptions = {
-        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate a person' }] }],
         mode: {
           type: 'object-json',
-          schema: { type: 'object', properties: { name: { type: 'string' } } },
+          schema: { type: 'object', properties: { name: { type: 'string' }, age: { type: 'number' } } },
         },
         inputFormat: 'messages',
       };
 
-      await expect(model.doStream(options)).rejects.toThrow(UnsupportedFunctionalityError);
-      await expect(model.doStream(options)).rejects.toThrow("'object-json mode' functionality not supported");
+      const result = await model.doStream(options);
+      const reader = result.stream.getReader();
+
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      // In object mode, we accumulate text and send it as one chunk before finish
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0]).toMatchObject({ 
+        type: 'text-delta', 
+        textDelta: '{"name": "Alice", "age": 25}' 
+      });
+      expect(chunks[1]).toMatchObject({
+        type: 'finish',
+        finishReason: 'stop',
+        usage: { promptTokens: 20, completionTokens: 10 }
+      });
     });
 
     it('should throw error for object-tool mode in streaming', async () => {

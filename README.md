@@ -67,6 +67,7 @@ npx tsx examples/basic-usage.ts
 - 📈 Token usage statistics with detailed breakdowns
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
 - ⚡ Zero-latency streaming with readline interface
+- 🎯 Object generation support with JSON schema validation
 
 ## Model Support
 
@@ -137,6 +138,33 @@ const { text: response2 } = await generateText({
   messages,
 });
 console.log(response2); // "Alice"
+```
+
+### Object Generation with JSON Schema
+
+```typescript
+import { generateObject } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+import { z } from 'zod';
+
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    name: z.string().describe('Full name'),
+    age: z.number().describe('Age in years'),
+    email: z.string().email().describe('Email address'),
+    interests: z.array(z.string()).describe('List of hobbies'),
+  }),
+  prompt: 'Generate a profile for a software developer',
+});
+
+console.log(object);
+// {
+//   name: "Alex Chen",
+//   age: 28,
+//   email: "alex.chen@example.com",
+//   interests: ["coding", "open source", "machine learning"]
+// }
 ```
 
 ### Timeout Configuration
@@ -309,29 +337,246 @@ console.log(experimental_providerMetadata);
 - **For Pro/Max subscribers**: This is informational only - usage is covered by your monthly subscription
 - **For API key users**: This represents actual charges that will be billed to your account
 
-## Limitations
+## Object Generation
 
-### Object Generation Not Supported
-
-The Claude Code CLI does not support structured output or object generation. Attempting to use `generateObject()` or `streamObject()` will throw an error:
+The provider supports object generation through prompt engineering, allowing you to generate structured data with JSON schema validation:
 
 ```typescript
-import { generateObject } from 'ai';
+import { generateObject, streamObject } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 import { z } from 'zod';
 
-// This will throw UnsupportedFunctionalityError
-await generateObject({
+// Generate a complete object
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    recipe: z.object({
+      name: z.string(),
+      ingredients: z.array(z.string()),
+      instructions: z.array(z.string()),
+      prepTime: z.number(),
+      servings: z.number(),
+    }),
+  }),
+  prompt: 'Generate a recipe for chocolate chip cookies',
+});
+
+// Note: streamObject waits for complete response before parsing
+// Use generateObject for clarity since streaming doesn't provide benefits
+const { object: analysis } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    analysis: z.string(),
+    sentiment: z.enum(['positive', 'negative', 'neutral']),
+    score: z.number(),
+  }),
+  prompt: 'Analyze this review: "Great product!"',
+});
+
+console.log(analysis);
+```
+
+**How it works**: The provider appends JSON generation instructions to your prompt and extracts valid JSON from Claude's response. While not as robust as native JSON mode, it works well for most use cases.
+
+**Important limitations**:
+- **No real-time streaming for objects**: Since we rely on prompt engineering rather than native JSON support, `streamObject` must wait for the complete response before parsing the JSON. This means `streamObject` and `generateObject` behave identically for object generation - both wait for the full response.
+- **Object-tool mode not supported**: Only `object-json` mode (via `generateObject`/`streamObject`) is available.
+- **Regular text streaming works**: Only standard text generation truly benefits from streaming. Object generation always requires the complete response.
+
+## Object Generation Cookbook
+
+### Quick Start Examples
+
+#### Basic Objects
+Start with simple schemas and clear prompts:
+```typescript
+const { object } = await generateObject({
   model: claudeCode('sonnet'),
   schema: z.object({
     name: z.string(),
     age: z.number(),
+    email: z.string().email(),
   }),
-  prompt: 'Generate a person',
+  prompt: 'Generate a developer profile',
 });
 ```
+[Full example](examples/generate-object-basic.ts)
 
-This is a limitation of the Claude Code CLI interface, which doesn't provide JSON mode or structured output capabilities.
+#### Nested Structures
+Build complex hierarchical data:
+```typescript
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    company: z.object({
+      departments: z.array(z.object({
+        name: z.string(),
+        teams: z.array(z.object({
+          name: z.string(),
+          members: z.number(),
+        })),
+      })),
+    }),
+  }),
+  prompt: 'Generate a company org structure',
+});
+```
+[Full example](examples/generate-object-nested.ts)
+
+#### Constrained Generation
+Use Zod's validation features:
+```typescript
+const { object } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: z.object({
+    status: z.enum(['pending', 'active', 'completed']),
+    priority: z.number().min(1).max(5),
+    tags: z.array(z.string()).min(1).max(3),
+  }),
+  prompt: 'Generate a task with medium priority',
+});
+```
+[Full example](examples/generate-object-constraints.ts)
+
+
+### Best Practices
+
+1. **Start Simple**: Begin with basic schemas and add complexity gradually
+2. **Clear Prompts**: Be specific about what you want generated
+3. **Use Descriptions**: Add `.describe()` to schema fields for better results
+4. **Handle Errors**: Implement retry logic for production use
+5. **Test Schemas**: Validate your schemas work before deployment
+
+### Common Patterns
+
+- **API Responses**: [Simple REST, GraphQL, webhooks](examples/generate-object-patterns.ts)
+- **Configuration Files**: [App settings, database schemas](examples/generate-object-patterns.ts)
+- **Data Models**: [User profiles, products, orders](examples/generate-object-nested.ts)
+- **Error Recovery**: [Retries, fallbacks, debugging](examples/generate-object-recovery.ts)
+- **Note**: For object generation, use `generateObject` instead of `streamObject` as streaming provides no benefits
+
+### Interactive Testing
+
+Try the interactive CLI tool to experiment with schemas:
+```bash
+npx tsx examples/generate-object-interactive.ts
+```
+
+## Object Generation Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. Invalid JSON Response
+**Problem**: Claude returns text instead of valid JSON
+
+**Solutions**:
+- Simplify your schema - start with fewer fields
+- Make your prompt more explicit: "Generate only valid JSON"
+- Check the schema for overly complex constraints
+- Use the retry pattern:
+
+```typescript
+async function generateWithRetry(schema, prompt, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await generateObject({ model, schema, prompt });
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+    }
+  }
+}
+```
+
+#### 2. Missing Required Fields
+**Problem**: Generated objects missing required properties
+
+**Solutions**:
+- Emphasize requirements in your prompt
+- Use descriptive field names
+- Add field descriptions with `.describe()`
+- Example:
+```typescript
+z.object({
+  // Bad: vague field name
+  val: z.number(),
+  
+  // Good: clear field name with description
+  totalPrice: z.number().describe('Total price in USD'),
+})
+```
+
+#### 3. Type Mismatches
+**Problem**: String when expecting number, wrong date format, etc.
+
+**Solutions**:
+- Be explicit in descriptions: "age as a number" not just "age"
+- For dates, specify format: `.describe('Date in YYYY-MM-DD format')`
+- Use regex patterns for strings: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
+
+#### 4. Schema Too Complex
+**Problem**: Very complex schemas fail or timeout
+
+**Solutions**:
+- Break into smaller parts and combine:
+```typescript
+// Instead of one huge schema, compose smaller ones
+const userSchema = z.object({ /* user fields */ });
+const settingsSchema = z.object({ /* settings */ });
+const profileSchema = z.object({
+  user: userSchema,
+  settings: settingsSchema,
+});
+```
+- Generate in steps and merge results
+- Increase timeout for complex generations
+
+#### 5. Inconsistent Results
+**Problem**: Same prompt gives different structure each time
+
+**Solutions**:
+- Make schemas more constrained (use enums, min/max)
+- Provide example in prompt
+- Use consistent field naming conventions
+- Consider using `opus` model for complex schemas
+
+### Debugging Tips
+
+1. **Enable Debug Logging**:
+```typescript
+const { object, usage, warnings } = await generateObject({
+  model: claudeCode('sonnet'),
+  schema: yourSchema,
+  prompt: yourPrompt,
+});
+console.log('Tokens used:', usage);
+console.log('Warnings:', warnings);
+```
+
+2. **Test Schema Separately**:
+```typescript
+// Validate your schema works
+const testData = { /* your test object */ };
+try {
+  schema.parse(testData);
+  console.log('Schema is valid');
+} catch (e) {
+  console.log('Schema errors:', e.errors);
+}
+```
+
+3. **Progressive Enhancement**:
+Start with minimal schema, test, then add fields one by one
+
+4. **Check Examples**:
+Review our [error handling examples](examples/generate-object-recovery.ts) for recovery strategies
+
+## Limitations
+
+- **No image support**: The Claude Code CLI doesn't support image inputs
+- **Object-tool mode not supported**: Only `object-json` mode works via `generateObject`/`streamObject`
+- **Text-only responses**: No support for file generation or other modalities
+- **Session management**: While sessions are supported, message history is the recommended approach
 
 ## Error Handling
 
@@ -380,6 +625,13 @@ ai-sdk-provider-claude-code/
 │   ├── custom-config.ts               # Provider configuration options
 │   ├── timeout-config.ts              # Timeout configuration examples
 │   ├── conversation-history.ts        # Multi-turn conversation with message history
+│   ├── generate-object.ts             # Original object generation example
+│   ├── generate-object-basic.ts       # Basic object generation patterns
+│   ├── generate-object-nested.ts      # Complex nested structures
+│   ├── generate-object-constraints.ts # Validation and constraints
+│   ├── generate-object-patterns.ts    # Simple real-world patterns
+│   ├── generate-object-recovery.ts    # Error handling strategies
+│   ├── generate-object-interactive.ts # Interactive CLI tool
 │   ├── test-session.ts                # Session management testing
 │   ├── integration-test.ts            # Comprehensive integration tests
 │   └── check-cli.ts                   # CLI installation verification
