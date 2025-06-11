@@ -102,7 +102,7 @@ export type ClaudeCodeModelConfig = z.infer<typeof claudeCodeModelSchema>;
 export const claudeCodeSettingsSchema = z.object({
   cliPath: z.string().optional(),
   skipPermissions: z.boolean().optional(),
-  maxConcurrentProcesses: z.number().optional(),
+  maxConcurrentProcesses: z.number().int().min(1).max(100).optional(),
   timeoutMs: z.number().min(1000).max(600000).optional(),
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
@@ -127,6 +127,7 @@ export interface ClaudeCodeSettings {
 
   /**
    * Maximum number of concurrent CLI processes
+   * Must be an integer between 1 and 100
    * @default 4
    */
   maxConcurrentProcesses?: number;

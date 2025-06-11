@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createClaudeCode, claudeCode } from './claude-code-provider';
 import { ClaudeCodeLanguageModel } from './claude-code-language-model';
+import { z } from 'zod';
 
 describe('ClaudeCodeProvider', () => {
   describe('createClaudeCode', () => {
@@ -103,6 +104,56 @@ describe('ClaudeCodeProvider', () => {
       });
 
       expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
+    });
+
+    describe('validation', () => {
+      it('should reject maxConcurrentProcesses of 0', () => {
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 0,
+        })).toThrow(z.ZodError);
+      });
+
+      it('should reject negative maxConcurrentProcesses', () => {
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: -1,
+        })).toThrow(z.ZodError);
+      });
+
+      it('should reject non-integer maxConcurrentProcesses', () => {
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 2.5,
+        })).toThrow(z.ZodError);
+      });
+
+      it('should reject maxConcurrentProcesses over 100', () => {
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 101,
+        })).toThrow(z.ZodError);
+      });
+
+      it('should accept valid maxConcurrentProcesses values', () => {
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 1,
+        })).not.toThrow();
+
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 50,
+        })).not.toThrow();
+
+        expect(() => createClaudeCode({
+          maxConcurrentProcesses: 100,
+        })).not.toThrow();
+      });
+
+      it('should provide descriptive error for invalid maxConcurrentProcesses', () => {
+        try {
+          createClaudeCode({ maxConcurrentProcesses: 0 });
+        } catch (error) {
+          expect(error).toBeInstanceOf(z.ZodError);
+          const zodError = error as z.ZodError;
+          expect(zodError.errors[0].message).toBe('Number must be greater than or equal to 1');
+        }
+      });
     });
   });
 
