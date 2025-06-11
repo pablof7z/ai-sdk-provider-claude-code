@@ -700,7 +700,10 @@ ai-sdk-provider-claude-code/
 │   ├── claude-code-cli.ts             # Unified spawn-based CLI wrapper with readline streaming
 │   ├── claude-code-parser.ts          # JSON event parser for streaming
 │   ├── errors.ts                      # Comprehensive error handling
-│   └── types.ts                       # TypeScript types with validation schemas
+│   ├── types.ts                       # TypeScript types with validation schemas
+│   └── utils/                         # Utility functions
+│       ├── parse.ts                   # Parsing and metadata helpers
+│       └── usage.ts                   # Token usage calculation
 ├── examples/
 │   ├── README.md                      # Examples documentation
 │   ├── basic-usage.ts                 # Simple text generation with metadata
@@ -712,6 +715,7 @@ ai-sdk-provider-claude-code/
 │   ├── generate-object-basic.ts       # Basic object generation patterns
 │   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── generate-object-constraints.ts # Validation and constraints
+│   ├── tool-management.ts             # Tool access control (allow/disallow)
 │   ├── test-session.ts                # Session management testing
 │   ├── abort-signal.ts                # Request cancellation examples
 │   ├── limitations.ts                 # Provider limitations demo
