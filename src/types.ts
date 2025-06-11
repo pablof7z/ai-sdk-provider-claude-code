@@ -88,6 +88,7 @@ export const claudeCodeModelSchema = z.object({
   model: z.enum(['opus', 'sonnet']).default('opus'),
   cliPath: z.string().default('claude'),
   skipPermissions: z.boolean().default(true),
+  allowedTools: z.array(z.string()).default([]),
   disallowedTools: z.array(z.string()).default([]),
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
@@ -106,6 +107,8 @@ export const claudeCodeSettingsSchema = z.object({
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
   largeResponseThreshold: z.number().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  disallowedTools: z.array(z.string()).optional(),
 }).strict();
 
 // Provider settings
@@ -151,4 +154,22 @@ export interface ClaudeCodeSettings {
    * @default 1000 characters
    */
   largeResponseThreshold?: number;
+
+  /**
+   * Tools to explicitly allow Claude to use during execution.
+   * Pass an array of tool names to create an allowlist.
+   * Example: ['read_file', 'list_files'] 
+   * Note: Cannot be used together with disallowedTools.
+   * @default [] (all tools allowed if disallowedTools is also empty)
+   */
+  allowedTools?: string[];
+
+  /**
+   * Tools to disallow Claude from using during execution.
+   * Pass an array of tool names to restrict access.
+   * Example: ['read_website', 'run_terminal_command']
+   * Note: Cannot be used together with allowedTools.
+   * @default [] (all tools allowed if allowedTools is also empty)
+   */
+  disallowedTools?: string[];
 }

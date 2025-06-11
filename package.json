@@ -48,7 +48,8 @@
         "example:config": "npm run build && npx tsx examples/custom-config.ts",
         "example:object:basic": "npm run build && npx tsx examples/generate-object-basic.ts",
         "example:object:nested": "npm run build && npx tsx examples/generate-object-nested.ts",
-        "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts"
+        "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts",
+        "example:tools": "npm run build && npx tsx examples/tool-management.ts"
     },
     "dependencies": {
         "@ai-sdk/provider": "1.1.3",

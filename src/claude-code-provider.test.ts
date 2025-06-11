@@ -62,6 +62,48 @@ describe('ClaudeCodeProvider', () => {
       expect(model1).toBeInstanceOf(ClaudeCodeLanguageModel);
       expect(model2).toBeInstanceOf(ClaudeCodeLanguageModel);
     });
+
+    it('should accept disallowedTools configuration', () => {
+      const provider = createClaudeCode({
+        disallowedTools: ['read_website', 'run_terminal_command'],
+      });
+
+      const model = provider('opus');
+      expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
+    });
+
+    it('should allow model-specific disallowedTools to override provider settings', () => {
+      const provider = createClaudeCode({
+        disallowedTools: ['read_website'],
+      });
+
+      const model = provider('opus', {
+        disallowedTools: ['run_terminal_command', 'create_file'],
+      });
+
+      expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
+    });
+
+    it('should accept allowedTools configuration', () => {
+      const provider = createClaudeCode({
+        allowedTools: ['read_file', 'list_files'],
+      });
+
+      const model = provider('opus');
+      expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
+    });
+
+    it('should allow model-specific allowedTools to override provider settings', () => {
+      const provider = createClaudeCode({
+        allowedTools: ['read_file'],
+      });
+
+      const model = provider('opus', {
+        allowedTools: ['read_file', 'list_files', 'search_files'],
+      });
+
+      expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
+    });
   });
 
   describe('claudeCode', () => {

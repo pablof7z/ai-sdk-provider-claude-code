@@ -147,6 +147,66 @@ describe('ClaudeCodeCLI', () => {
 
       await Promise.all([promise1, promise2, promise3]);
     });
+
+    it('should include disallowedTools in CLI arguments', async () => {
+      const mockProcess = createMockProcess();
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const promise = cli.execute('test prompt', {
+        model: 'opus',
+        cliPath: 'claude',
+        skipPermissions: true,
+        disallowedTools: ['read_website', 'run_terminal_command'],
+        allowedTools: [],
+      });
+
+      // Simulate successful completion
+      setTimeout(() => {
+        mockProcess.stdout.write(JSON.stringify({ result: 'Response', is_error: false }));
+        mockProcess.exitCode = 0;
+        mockProcess._closeHandler(0);
+      }, 5);
+
+      await promise;
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'claude',
+        expect.arrayContaining([
+          '--disallowedTools', 'read_website,run_terminal_command'
+        ]),
+        expect.any(Object)
+      );
+    });
+
+    it('should include allowedTools in CLI arguments', async () => {
+      const mockProcess = createMockProcess();
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const promise = cli.execute('test prompt', {
+        model: 'opus',
+        cliPath: 'claude',
+        skipPermissions: true,
+        allowedTools: ['read_file', 'list_files'],
+        disallowedTools: [],
+      });
+
+      // Simulate successful completion
+      setTimeout(() => {
+        mockProcess.stdout.write(JSON.stringify({ result: 'Response', is_error: false }));
+        mockProcess.exitCode = 0;
+        mockProcess._closeHandler(0);
+      }, 5);
+
+      await promise;
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'claude',
+        expect.arrayContaining([
+          '--allowedTools', 'read_file,list_files'
+        ]),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('stream', () => {
@@ -159,6 +219,7 @@ describe('ClaudeCodeCLI', () => {
         model: 'sonnet',
         cliPath: 'claude',
         skipPermissions: true,
+        allowedTools: [],
         disallowedTools: [],
       });
 

@@ -253,6 +253,8 @@ const { text } = await generateText({
 | `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
 | `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
 | `largeResponseThreshold` | `number` | `1000` | Prompt length threshold for auto-streaming (characters) |
+| `allowedTools` | `string[]` | `[]` | Tools to explicitly allow (cannot be used with disallowedTools) |
+| `disallowedTools` | `string[]` | `[]` | Tools to restrict Claude from using (cannot be used with allowedTools) |
 
 ### Custom Configuration
 
@@ -271,6 +273,53 @@ const { text } = await generateText({
   prompt: 'Hello, Claude!',
 });
 ```
+
+### Tool Restrictions
+
+You can control which tools Claude Code can use with either `allowedTools` (allowlist) or `disallowedTools` (denylist):
+
+#### Using allowedTools (Allowlist)
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+// Only allow specific tools
+const readOnlyClaude = createClaudeCode({
+  allowedTools: ['read_file', 'list_files', 'search_files'],
+});
+
+// Model-specific override
+const { text } = await generateText({
+  model: readOnlyClaude('opus', {
+    allowedTools: ['read_file'], // Even more restrictive
+  }),
+  prompt: 'Review this code and identify issues...',
+});
+```
+
+#### Using disallowedTools (Denylist)
+```typescript
+// Block specific tools
+const restrictedClaude = createClaudeCode({
+  disallowedTools: ['read_website', 'run_terminal_command'],
+});
+
+// Model-specific override
+const { text } = await generateText({
+  model: restrictedClaude('opus', {
+    disallowedTools: ['create_file', 'edit_file'], // Override provider settings
+  }),
+  prompt: 'Analyze this code without modifying any files...',
+});
+```
+
+**Note**: You cannot use both `allowedTools` and `disallowedTools` together - choose one approach based on your needs.
+
+Common tools to manage:
+- `read_website` - Web access
+- `run_terminal_command` - Command execution
+- `create_file` / `edit_file` / `delete_file` - File operations
+- `install_packages` - Package management
+- `read_file` / `list_files` / `search_files` - File reading operations
 
 ## Auto-Streaming for Large Responses
 
@@ -651,7 +700,10 @@ ai-sdk-provider-claude-code/
 │   ├── claude-code-cli.ts             # Unified spawn-based CLI wrapper with readline streaming
 │   ├── claude-code-parser.ts          # JSON event parser for streaming
 │   ├── errors.ts                      # Comprehensive error handling
-│   └── types.ts                       # TypeScript types with validation schemas
+│   ├── types.ts                       # TypeScript types with validation schemas
+│   └── utils/                         # Utility functions
+│       ├── parse.ts                   # Parsing and metadata helpers
+│       └── usage.ts                   # Token usage calculation
 ├── examples/
 │   ├── README.md                      # Examples documentation
 │   ├── basic-usage.ts                 # Simple text generation with metadata
@@ -663,6 +715,7 @@ ai-sdk-provider-claude-code/
 │   ├── generate-object-basic.ts       # Basic object generation patterns
 │   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── generate-object-constraints.ts # Validation and constraints
+│   ├── tool-management.ts             # Tool access control (allow/disallow)
 │   ├── test-session.ts                # Session management testing
 │   ├── abort-signal.ts                # Request cancellation examples
 │   ├── limitations.ts                 # Provider limitations demo

@@ -12,6 +12,7 @@ examples/
 ├── conversation-history.ts        # Multi-turn conversations
 ├── custom-config.ts               # Configuration options
 ├── timeout-config.ts              # Timeout configuration examples
+├── tool-management.ts             # Tool access control (allow/disallow)
 ├── test-session.ts                # Session management
 ├── abort-signal.ts                # Request cancellation with AbortController
 ├── limitations.ts                 # Provider limitations and unsupported features
@@ -73,21 +74,28 @@ npx tsx examples/timeout-config.ts
 ```
 **Why included**: Shows how to configure timeouts for different use cases and Claude models.
 
-### 6. Session Management (`test-session.ts`)
+### 6. Tool Management (`tool-management.ts`)
+Demonstrates how to control which tools Claude Code can use with both allowlist and denylist approaches.
+```bash
+npx tsx examples/tool-management.ts
+```
+**Why included**: Shows fine-grained control over Claude's tool access for security and compliance.
+
+### 7. Session Management (`test-session.ts`)
 Demonstrates experimental session-based conversation continuity.
 ```bash
 npx tsx examples/test-session.ts
 ```
 **Why included**: Shows alternative conversation approach using Claude's session IDs.
 
-### 7. Request Cancellation (`abort-signal.ts`)
+### 8. Request Cancellation (`abort-signal.ts`)
 Shows how to cancel in-progress requests using AbortController and AbortSignal.
 ```bash
 npx tsx examples/abort-signal.ts
 ```
 **Why included**: Essential for implementing timeouts, user cancellations, and cleanup.
 
-### 8. Provider Limitations (`limitations.ts`)
+### 9. Provider Limitations (`limitations.ts`)
 Explicitly demonstrates which AI SDK features are NOT supported by Claude Code CLI.
 ```bash
 npx tsx examples/limitations.ts
@@ -96,28 +104,28 @@ npx tsx examples/limitations.ts
 
 ## Object Generation Examples
 
-### 9. Object Generation Overview (`generate-object.ts`)
+### 10. Object Generation Overview (`generate-object.ts`)
 Introduction to object generation with JSON schema validation.
 ```bash
 npx tsx examples/generate-object.ts
 ```
 **Why included**: Shows the basics of structured data generation.
 
-### 10. Basic Object Patterns (`generate-object-basic.ts`)
+### 11. Basic Object Patterns (`generate-object-basic.ts`)
 Simple schemas with primitives, arrays, and optional fields.
 ```bash
 npx tsx examples/generate-object-basic.ts
 ```
 **Why included**: Essential patterns for getting started with object generation.
 
-### 11. Nested Structures (`generate-object-nested.ts`)
+### 12. Nested Structures (`generate-object-nested.ts`)
 Complex hierarchical data like organizations, orders, and configurations.
 ```bash
 npx tsx examples/generate-object-nested.ts
 ```
 **Why included**: Demonstrates real-world data modeling.
 
-### 12. Validation Constraints (`generate-object-constraints.ts`)
+### 13. Validation Constraints (`generate-object-constraints.ts`)
 Using Zod's validation features for enums, ranges, and patterns.
 ```bash
 npx tsx examples/generate-object-constraints.ts
