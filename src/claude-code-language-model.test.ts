@@ -100,6 +100,7 @@ describe('ClaudeCodeLanguageModel', () => {
       );
     });
 
+
     it('should handle authentication errors', async () => {
       vi.spyOn(mockCLI, 'execute').mockResolvedValue({
         stdout: '',
@@ -754,6 +755,24 @@ describe('ClaudeCodeLanguageModel', () => {
 
       const prompt = convertMessages(messages);
       expect(prompt).toBe('Be helpful\n\nHello\n\nAssistant: Hi!\n\nHow are you?');
+    });
+
+    it('should handle messages with multiple text parts', () => {
+      const convertMessages = (model as any).messagesToPrompt.bind(model);
+
+      const messages = [
+        { 
+          role: 'user', 
+          content: [
+            { type: 'text', text: 'Part 1.' },
+            { type: 'text', text: 'Part 2.' },
+            { type: 'text', text: 'Part 3.' }
+          ]
+        },
+      ];
+
+      const prompt = convertMessages(messages);
+      expect(prompt).toBe('Part 1. Part 2. Part 3.');
     });
   });
 

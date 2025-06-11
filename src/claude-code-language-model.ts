@@ -368,7 +368,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     // Prepend system message if present
     const systemMessage = prompt.find(msg => msg.role === 'system');
     if (systemMessage && systemMessage.role === 'system') {
-      return `${systemMessage.content}\n\n${messages}`;
+      // System messages in AI SDK have content as a string
+      const systemContent = systemMessage.content;
+      return systemContent ? `${systemContent}\n\n${messages}` : messages;
     }
 
     return messages;
