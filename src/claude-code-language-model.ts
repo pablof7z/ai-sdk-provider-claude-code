@@ -12,6 +12,14 @@ import { ClaudeCodeCLI } from './claude-code-cli.js';
 import type { ClaudeCodeModelConfig } from './types.js';
 import { isAssistantEvent, isResultEvent, isSystemEvent, isErrorEvent } from './types.js';
 import { ClaudeCodeError, isAuthenticationError } from './errors.js';
+import { calcUsage } from './utils/usage.js';
+import { 
+  parseClaudeResult, 
+  extractJsonFromObjectMode, 
+  buildProviderMetadata, 
+  handleSessionId,
+  isObjectToolMode
+} from './utils/parse.js';
 
 export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   readonly specificationVersion = 'v1';
@@ -57,7 +65,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     const { prompt, mode } = options;
 
     // For object-tool mode, we don't support it yet
-    if (mode.type === 'object-tool') {
+    if (isObjectToolMode(mode)) {
       throw new UnsupportedFunctionalityError({
         functionality: 'object-tool mode',
       });
@@ -161,33 +169,32 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         });
       }
 
-      // Extract text and session ID from the response
-      let text = jsonResponse.result || '';
-      const newSessionId = jsonResponse.session_id;
+      // Parse the result
+      const parsed = parseClaudeResult(jsonResponse);
+      let text = parsed.text;
       
       // For object-json mode, extract and validate JSON
       if (mode.type === 'object-json') {
-        text = this.extractJson(text);
+        const jsonContent = extractJsonFromObjectMode(text);
+        if (jsonContent) {
+          text = jsonContent;
+        } else {
+          text = this.extractJson(text);
+        }
       }
       
-      if (newSessionId) {
-        this.sessionId = newSessionId;
+      // Update session ID only if it was provided in config
+      if (this.config.sessionId) {
+        this.sessionId = handleSessionId(this.sessionId, parsed.sessionId) || this.sessionId;
       }
 
-      // Extract token usage from the response
-      const usage = jsonResponse.usage || {};
-      const promptTokens = (usage.input_tokens || 0) + 
-                          (usage.cache_creation_input_tokens || 0) + 
-                          (usage.cache_read_input_tokens || 0);
-      const completionTokens = usage.output_tokens || 0;
+      // Calculate token usage
+      const usage = calcUsage(parsed.usage);
 
       return {
         text,
         finishReason: 'stop' as LanguageModelV1FinishReason,
-        usage: {
-          promptTokens,
-          completionTokens,
-        },
+        usage,
         rawCall: {
           rawPrompt: promptText,
           rawSettings: {
@@ -199,21 +206,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           headers: {},
         },
         warnings: [],
-        providerMetadata: {
-          'claude-code': {
-            ...(this.sessionId && { sessionId: this.sessionId }),
-            ...(jsonResponse.cost_usd && { costUsd: jsonResponse.cost_usd }),
-            ...(jsonResponse.duration_ms && { durationMs: jsonResponse.duration_ms }),
-            ...(jsonResponse.usage && { 
-              rawUsage: {
-                inputTokens: jsonResponse.usage.input_tokens,
-                outputTokens: jsonResponse.usage.output_tokens,
-                cacheCreationInputTokens: jsonResponse.usage.cache_creation_input_tokens,
-                cacheReadInputTokens: jsonResponse.usage.cache_read_input_tokens,
-              }
-            }),
-          },
-        },
+        providerMetadata: buildProviderMetadata(this.sessionId, parsed),
       };
     } catch (error) {
       if (isAuthenticationError(error)) {
@@ -243,7 +236,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     warnings?: LanguageModelV1CallWarning[];
   }> {
     // For object-tool mode, we don't support it yet
-    if (options.mode.type === 'object-tool') {
+    if (isObjectToolMode(options.mode)) {
       throw new UnsupportedFunctionalityError({
         functionality: 'object-tool mode',
       });
@@ -270,8 +263,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
             let accumulatedText = '';
             
             for await (const event of eventStream) {
-              if (isSystemEvent(event) && event.session_id && !this.sessionId) {
-                this.sessionId = event.session_id;
+              if (isSystemEvent(event) && this.config.sessionId) {
+                this.sessionId = handleSessionId(this.sessionId, event.session_id) || this.sessionId;
               } else if (isAssistantEvent(event) && event.message) {
                 const messageContent = event.message.content?.[0]?.text;
                 if (messageContent) {
@@ -287,48 +280,30 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                   }
                 }
               } else if (isResultEvent(event)) {
-                if (event.session_id) {
-                  this.sessionId = event.session_id;
+                // Update session ID only if it was provided in config
+                if (this.config.sessionId) {
+                  this.sessionId = handleSessionId(this.sessionId, event.session_id) || this.sessionId;
                 }
                 
                 // For object mode, send the accumulated and extracted JSON as a single text delta
                 if (options.mode.type === 'object-json' && accumulatedText) {
-                  const extractedJson = this.extractJson(accumulatedText);
+                  const jsonContent = extractJsonFromObjectMode(accumulatedText);
+                  const extractedJson = jsonContent || this.extractJson(accumulatedText);
                   controller.enqueue({
                     type: 'text-delta',
                     textDelta: extractedJson,
                   } as LanguageModelV1StreamPart);
                 }
                 
-                // Extract token usage from the result event
-                const usage = event.usage || {};
-                const promptTokens = (usage.input_tokens || 0) + 
-                                    (usage.cache_creation_input_tokens || 0) + 
-                                    (usage.cache_read_input_tokens || 0);
-                const completionTokens = usage.output_tokens || 0;
+                // Parse result and calculate usage
+                const parsed = parseClaudeResult(event);
+                const usage = calcUsage(parsed.usage);
                 
                 controller.enqueue({
                   type: 'finish',
                   finishReason: 'stop',
-                  usage: {
-                    promptTokens,
-                    completionTokens,
-                  },
-                  providerMetadata: {
-                    'claude-code': {
-                      ...(this.sessionId && { sessionId: this.sessionId }),
-                      ...(event.cost_usd && { costUsd: event.cost_usd }),
-                      ...(event.duration_ms && { durationMs: event.duration_ms }),
-                      ...(usage && { 
-                        rawUsage: {
-                          inputTokens: usage.input_tokens,
-                          outputTokens: usage.output_tokens,
-                          cacheCreationInputTokens: usage.cache_creation_input_tokens,
-                          cacheReadInputTokens: usage.cache_read_input_tokens,
-                        }
-                      }),
-                    },
-                  },
+                  usage,
+                  providerMetadata: buildProviderMetadata(this.sessionId, parsed),
                 } as LanguageModelV1StreamPart);
               } else if (isErrorEvent(event)) {
                 controller.error(new ClaudeCodeError({
@@ -461,40 +436,20 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       );
       
       for await (const event of eventStream) {
-        if (isSystemEvent(event) && event.session_id) {
-          sessionId = event.session_id;
+        if (isSystemEvent(event)) {
+          sessionId = handleSessionId(sessionId, event.session_id) || sessionId;
         } else if (isAssistantEvent(event) && event.message) {
           const messageContent = event.message.content?.[0]?.text;
           if (messageContent) {
             accumulatedText += messageContent;
           }
         } else if (isResultEvent(event)) {
-          sessionId = event.session_id || sessionId;
+          sessionId = handleSessionId(sessionId, event.session_id) || sessionId;
           
-          // Extract usage and metadata from result event
-          const eventUsage = event.usage || {};
-          const promptTokens = (eventUsage.input_tokens || 0) + 
-                              (eventUsage.cache_creation_input_tokens || 0) + 
-                              (eventUsage.cache_read_input_tokens || 0);
-          const completionTokens = eventUsage.output_tokens || 0;
-          
-          usage = { promptTokens, completionTokens };
-          
-          providerMetadata = {
-            'claude-code': {
-              ...(sessionId && { sessionId }),
-              ...(event.cost_usd && { costUsd: event.cost_usd }),
-              ...(event.duration_ms && { durationMs: event.duration_ms }),
-              ...(eventUsage && { 
-                rawUsage: {
-                  inputTokens: eventUsage.input_tokens || 0,
-                  outputTokens: eventUsage.output_tokens || 0,
-                  cacheCreationInputTokens: eventUsage.cache_creation_input_tokens || 0,
-                  cacheReadInputTokens: eventUsage.cache_read_input_tokens || 0,
-                }
-              }),
-            },
-          };
+          // Parse result and calculate usage
+          const parsed = parseClaudeResult(event);
+          usage = calcUsage(parsed.usage);
+          providerMetadata = buildProviderMetadata(sessionId, parsed);
         } else if (isErrorEvent(event)) {
           throw new ClaudeCodeError({
             message: event.error.message || 'Claude CLI error',
@@ -504,12 +459,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       }
       
       // Process accumulated text
-      if (mode.type === 'object-json' || accumulatedText.includes('```')) {
+      if (mode.type === 'object-json') {
+        const jsonContent = extractJsonFromObjectMode(accumulatedText);
+        accumulatedText = jsonContent || this.extractJson(accumulatedText);
+      } else if (accumulatedText.includes('```')) {
         accumulatedText = this.extractJson(accumulatedText);
       }
       
-      if (sessionId) {
-        this.sessionId = sessionId;
+      // Update session ID only if it was provided in config
+      if (this.config.sessionId) {
+        this.sessionId = handleSessionId(this.sessionId, sessionId) || this.sessionId;
       }
       
       return {
