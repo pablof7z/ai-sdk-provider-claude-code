@@ -69,6 +69,7 @@ npx tsx examples/basic-usage.ts
 - ⚡ Zero-latency streaming with readline interface
 - 🎯 Object generation support with JSON schema validation
 - 🔀 Automatic streaming for large responses (prevents 8K truncation)
+- 🚦 Abort-aware request queue for efficient cancellation handling
 
 ## Model Support
 
@@ -251,7 +252,7 @@ const { text } = await generateText({
 | `skipPermissions` | `boolean` | `true` | Whether to add `--dangerously-skip-permissions` flag |
 | `sessionId` | `string` | `undefined` | Resume a previous conversation session |
 | `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
-| `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes |
+| `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes (queue with abort-aware handling) |
 | `largeResponseThreshold` | `number` | `1000` | Prompt length threshold for auto-streaming (characters) |
 | `allowedTools` | `string[]` | `[]` | Tools to explicitly allow (both built-in and MCP) |
 | `disallowedTools` | `string[]` | `[]` | Tools to restrict (both built-in and MCP) |
@@ -414,6 +415,47 @@ const claude = createClaudeCode({
 ```
 
 Set to 0 to always use streaming, or a very high number to disable auto-streaming.
+
+## Request Cancellation and Queue Management
+
+The provider includes intelligent queue management that efficiently handles request cancellation:
+
+### Abort-Aware Queue
+
+When multiple concurrent requests exceed `maxConcurrentProcesses`, queued requests monitor their abort signals:
+
+```typescript
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+
+// Create abort controller
+const controller = new AbortController();
+
+// Start request
+const promise = generateText({
+  model: claudeCode('opus'),
+  prompt: 'Write a long story...',
+  abortSignal: controller.signal,
+});
+
+// Cancel while queued - no CLI process is spawned
+controller.abort();
+
+// The promise rejects immediately without wasting resources
+try {
+  await promise;
+} catch (error) {
+  console.log('Request cancelled before processing');
+}
+```
+
+**Benefits:**
+- **Zero wasted spawns**: Aborted requests are removed from queue before spawning
+- **Immediate cancellation**: No delay when cancelling queued requests
+- **Resource efficiency**: Pool slots freed instantly for other requests
+- **Clean error handling**: Proper error propagation for cancelled requests
+
+This is especially useful in UI scenarios where users might cancel requests or navigate away while requests are queued.
 
 ## Implementation Details
 
