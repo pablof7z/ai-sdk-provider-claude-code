@@ -33,9 +33,20 @@ export function createClaudeCode(options: ClaudeCodeSettings = {}): ClaudeCodePr
     return new ClaudeCodeLanguageModel(modelId, config, cli);
   };
 
-  const provider = Object.assign(createModel, {
-    languageModel: createModel,
-  });
+  const provider = function (
+    modelId: 'opus' | 'sonnet',
+    settings?: ClaudeCodeSettings,
+  ) {
+    if (new.target) {
+      throw new Error(
+        'The Claude Code model function cannot be called with the new keyword.',
+      );
+    }
+
+    return createModel(modelId, settings ?? {});
+  };
+
+  provider.languageModel = createModel;
 
   return provider as ClaudeCodeProvider;
 }

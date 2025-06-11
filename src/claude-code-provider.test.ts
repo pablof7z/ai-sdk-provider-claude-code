@@ -64,6 +64,15 @@ describe('ClaudeCodeProvider', () => {
       expect(model2).toBeInstanceOf(ClaudeCodeLanguageModel);
     });
 
+    it('should throw error when called with new keyword', () => {
+      const provider = createClaudeCode();
+      
+      expect(() => {
+        // @ts-expect-error - intentionally calling with new for testing
+        new provider('opus');
+      }).toThrow('The Claude Code model function cannot be called with the new keyword.');
+    });
+
     it('should accept disallowedTools configuration', () => {
       const provider = createClaudeCode({
         disallowedTools: ['read_website', 'run_terminal_command'],
@@ -167,6 +176,13 @@ describe('ClaudeCodeProvider', () => {
       const model = claudeCode('sonnet');
       expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
       expect(model.modelId).toBe('sonnet');
+    });
+
+    it('should throw error when default instance is called with new keyword', () => {
+      expect(() => {
+        // @ts-expect-error - intentionally calling with new for testing
+        new claudeCode('opus');
+      }).toThrow('The Claude Code model function cannot be called with the new keyword.');
     });
   });
 });
