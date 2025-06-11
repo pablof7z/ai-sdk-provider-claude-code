@@ -76,6 +76,7 @@ describe('ClaudeCodeCLI', () => {
         '--model', 'opus',
         '--output-format', 'json',
         '--dangerously-skip-permissions',
+        '--disallowedTools', '',
       ], expect.any(Object));
 
       expect(result.exitCode).toBe(0);
@@ -146,6 +147,140 @@ describe('ClaudeCodeCLI', () => {
       resolveHandlers[2](0);
 
       await Promise.all([promise1, promise2, promise3]);
+    });
+
+    it('should skip aborted requests in queue', async () => {
+      let resolveHandlers: Array<(code: number) => void> = [];
+      
+      mockSpawn.mockImplementation(() => {
+        const mockProcess = createMockProcess({
+          on: vi.fn((event, handler) => {
+            if (event === 'close') {
+              resolveHandlers.push(handler);
+            }
+          }),
+        });
+        return mockProcess as any;
+      });
+
+      // Start 2 processes to fill the pool
+      const promise1 = cli.execute('prompt1', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+      const promise2 = cli.execute('prompt2', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+      
+      await new Promise(resolve => setImmediate(resolve));
+      expect(mockSpawn).toHaveBeenCalledTimes(2);
+      
+      // Queue a third request with abort signal
+      const abortController = new AbortController();
+      const promise3 = cli.execute('prompt3', { 
+        model: 'opus', 
+        cliPath: 'claude', 
+        skipPermissions: true, 
+        disallowedTools: [] 
+      }, { signal: abortController.signal });
+
+      // Queue a fourth request
+      const promise4 = cli.execute('prompt4', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+
+      // Abort the third request while it's queued
+      abortController.abort();
+
+      // Complete first process
+      resolveHandlers[0](0);
+
+      // Wait for queue processing
+      await new Promise(resolve => setImmediate(resolve));
+
+      // Fourth request should spawn (third was skipped)
+      expect(mockSpawn).toHaveBeenCalledTimes(3);
+      expect(mockSpawn).toHaveBeenLastCalledWith('claude', expect.arrayContaining(['-p']), expect.any(Object));
+
+      // Third promise should reject with abort error
+      await expect(promise3).rejects.toThrow('Request aborted while waiting for slot');
+
+      // Complete remaining processes
+      resolveHandlers[1](0);
+      resolveHandlers[2](0);
+
+      await Promise.all([promise1, promise2, promise4]);
+    });
+
+    it('should handle already aborted signals', async () => {
+      const abortController = new AbortController();
+      abortController.abort();
+
+      // With maxProcesses=2, this should have slots available and reject immediately
+      await expect(cli.execute('prompt', { 
+        model: 'opus', 
+        cliPath: 'claude', 
+        skipPermissions: true, 
+        disallowedTools: [] 
+      }, { signal: abortController.signal })).rejects.toThrow('Request aborted while waiting for slot');
+      
+      expect(mockSpawn).not.toHaveBeenCalled();
+    });
+
+    it('should remove aborted requests from queue on abort signal', async () => {
+      let resolveHandlers: Array<(code: number) => void> = [];
+      
+      mockSpawn.mockImplementation(() => {
+        const mockProcess = createMockProcess({
+          on: vi.fn((event, handler) => {
+            if (event === 'close') {
+              resolveHandlers.push(handler);
+            }
+          }),
+        });
+        return mockProcess as any;
+      });
+
+      // Fill the pool
+      const promise1 = cli.execute('prompt1', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+      const promise2 = cli.execute('prompt2', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+      
+      await new Promise(resolve => setImmediate(resolve));
+      
+      // Queue multiple requests with abort signals
+      const abortController1 = new AbortController();
+      const abortController2 = new AbortController();
+      
+      const promise3 = cli.execute('prompt3', { 
+        model: 'opus', 
+        cliPath: 'claude', 
+        skipPermissions: true, 
+        disallowedTools: [] 
+      }, { signal: abortController1.signal });
+
+      const promise4 = cli.execute('prompt4', { 
+        model: 'opus', 
+        cliPath: 'claude', 
+        skipPermissions: true, 
+        disallowedTools: [] 
+      }, { signal: abortController2.signal });
+
+      const promise5 = cli.execute('prompt5', { model: 'opus', cliPath: 'claude', skipPermissions: true, disallowedTools: [] });
+
+      // Abort both queued requests
+      abortController1.abort();
+      abortController2.abort();
+
+      // Complete first process
+      resolveHandlers[0](0);
+
+      // Wait for queue processing
+      await new Promise(resolve => setImmediate(resolve));
+
+      // Only promise5 should spawn (promise3 and promise4 were aborted)
+      expect(mockSpawn).toHaveBeenCalledTimes(3);
+
+      await expect(promise3).rejects.toThrow('Request aborted while waiting for slot');
+      await expect(promise4).rejects.toThrow('Request aborted while waiting for slot');
+
+      // Complete remaining processes
+      resolveHandlers[1](0);
+      resolveHandlers[2](0);
+
+      await Promise.all([promise1, promise2, promise5]);
     });
 
     it('should include disallowedTools in CLI arguments', async () => {

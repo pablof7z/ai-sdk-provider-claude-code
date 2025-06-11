@@ -9,10 +9,16 @@ interface SpawnResult {
   exitCode: number | null;
 }
 
+interface QueuedRequest {
+  resolve: () => void;
+  reject: (error: Error) => void;
+  signal?: AbortSignal;
+}
+
 export class ClaudeCodeCLI {
   private activeProcesses = 0;
   private readonly maxProcesses: number;
-  private readonly queue: Array<() => void> = [];
+  private readonly queue: QueuedRequest[] = [];
 
   constructor(maxProcesses = 4) {
     this.maxProcesses = maxProcesses;
@@ -26,7 +32,7 @@ export class ClaudeCodeCLI {
       signal?: AbortSignal;
     } = {}
   ): Promise<SpawnResult> {
-    await this.waitForSlot();
+    await this.waitForSlot(options.signal);
 
     try {
       this.activeProcesses++;
@@ -44,7 +50,7 @@ export class ClaudeCodeCLI {
       signal?: AbortSignal;
     } = {}
   ): AsyncGenerator<ClaudeCodeEvent> {
-    await this.waitForSlot();
+    await this.waitForSlot(options.signal);
 
     try {
       this.activeProcesses++;
@@ -55,20 +61,73 @@ export class ClaudeCodeCLI {
     }
   }
 
-  private async waitForSlot(): Promise<void> {
+  private async waitForSlot(signal?: AbortSignal): Promise<void> {
+    // Check if already aborted before proceeding
+    if (signal?.aborted) {
+      throw createAPICallError({
+        message: 'Request aborted while waiting for slot',
+        code: 'ABORTED',
+        promptExcerpt: '',
+        isRetryable: false,
+      });
+    }
+
     if (this.activeProcesses < this.maxProcesses) {
       return;
     }
 
-    return new Promise((resolve) => {
-      this.queue.push(resolve);
+    return new Promise((resolve, reject) => {
+
+      // Set up abort handler
+      const abortHandler = () => {
+        // Remove this request from the queue
+        const index = this.queue.findIndex(req => req.resolve === resolve);
+        if (index > -1) {
+          this.queue.splice(index, 1);
+        }
+        reject(createAPICallError({
+          message: 'Request aborted while waiting for slot',
+          code: 'ABORTED',
+          promptExcerpt: '',
+          isRetryable: false,
+        }));
+      };
+
+      // Listen for abort signal
+      signal?.addEventListener('abort', abortHandler);
+
+      // Add to queue with cleanup
+      this.queue.push({
+        resolve: () => {
+          signal?.removeEventListener('abort', abortHandler);
+          resolve();
+        },
+        reject,
+        signal
+      });
     });
   }
 
   private processQueue(): void {
-    const next = this.queue.shift();
-    if (next) {
-      next();
+    // Process the queue, skipping any aborted requests
+    while (this.queue.length > 0 && this.activeProcesses < this.maxProcesses) {
+      const next = this.queue.shift();
+      if (!next) break;
+
+      // Skip if request was aborted
+      if (next.signal?.aborted) {
+        next.reject(createAPICallError({
+          message: 'Request aborted while waiting for slot',
+          code: 'ABORTED',
+          promptExcerpt: '',
+          isRetryable: false,
+        }));
+        continue;
+      }
+
+      // Process this request
+      next.resolve();
+      break;
     }
   }
 
