@@ -20,6 +20,7 @@ describe('ClaudeCodeLanguageModel', () => {
       model: 'opus',
       cliPath: 'claude',
       skipPermissions: true,
+      allowedTools: [],
       disallowedTools: [],
     }, mockCLI);
   });
