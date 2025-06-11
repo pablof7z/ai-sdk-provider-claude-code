@@ -66,7 +66,8 @@ describe('ClaudeCodeLanguageModel', () => {
         finishReason: 'stop',
         usage: { promptTokens: 10, completionTokens: 5 },
       });
-      expect(result.providerMetadata?.['claude-code']?.sessionId).toBe('sess_123');
+      // Session ID should not be persisted when not provided in config
+      expect(result.providerMetadata?.['claude-code']?.sessionId).toBeUndefined();
     });
 
     it('should handle system messages', async () => {
@@ -531,8 +532,9 @@ describe('ClaudeCodeLanguageModel', () => {
         type: 'finish',
         finishReason: 'stop',
         usage: { promptTokens: 10, completionTokens: 5 },
-        providerMetadata: { 'claude-code': { sessionId: 'sess_456' } },
       });
+      // Session ID should not be persisted when not provided in config
+      expect(chunks[1].providerMetadata?.['claude-code']?.sessionId).toBeUndefined();
     });
 
     it('should handle streaming errors', async () => {
