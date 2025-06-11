@@ -184,6 +184,9 @@ describe('ClaudeCodeCLI', () => {
 
       // Abort the third request while it's queued
       abortController.abort();
+      
+      // Immediately catch the rejection to prevent unhandled promise rejection
+      promise3.catch(() => {});
 
       // Complete first process
       resolveHandlers[0](0);
@@ -263,6 +266,10 @@ describe('ClaudeCodeCLI', () => {
       // Abort both queued requests
       abortController1.abort();
       abortController2.abort();
+      
+      // Immediately catch the rejections to prevent unhandled promise rejections
+      promise3.catch(() => {});
+      promise4.catch(() => {});
 
       // Complete first process
       resolveHandlers[0](0);
