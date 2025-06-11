@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import { createInterface } from 'readline';
 import type { ClaudeCodeEvent, ClaudeCodeModelConfig } from './types.js';
-import { ClaudeCodeError } from './errors.js';
+import { createAPICallError, createTimeoutError } from './errors.js';
 
 interface SpawnResult {
   stdout: string;
@@ -108,13 +108,13 @@ export class ClaudeCodeCLI {
       args.push('--dangerously-skip-permissions');
     }
 
-    // Allowed tools
-    if (config.allowedTools && config.allowedTools.length > 0) {
+    // Allowed tools - include even if empty array (explicit empty allowlist)
+    if (config.allowedTools !== undefined) {
       args.push('--allowedTools', config.allowedTools.join(','));
     }
 
-    // Disallowed tools
-    if (config.disallowedTools && config.disallowedTools.length > 0) {
+    // Disallowed tools - include even if empty array  
+    if (config.disallowedTools !== undefined) {
       args.push('--disallowedTools', config.disallowedTools.join(','));
     }
 
@@ -159,9 +159,11 @@ export class ClaudeCodeCLI {
 
       child.on('error', (error) => {
         clearTimeout(timeout);
-        reject(new ClaudeCodeError({
+        reject(createAPICallError({
           message: `Failed to spawn Claude CLI: ${error.message}`,
+          code: 'SPAWN_ERROR',
           promptExcerpt: prompt.slice(0, 100),
+          isRetryable: false,
         }));
       });
 
@@ -170,10 +172,10 @@ export class ClaudeCodeCLI {
         
         if (code !== 0 && child.killed) {
           const timeoutSeconds = Math.round(timeoutMs / 1000);
-          reject(new ClaudeCodeError({
+          reject(createTimeoutError({
             message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
-            code: 'TIMEOUT',
             promptExcerpt: prompt.slice(0, 100),
+            timeoutMs,
           }));
           return;
         }
@@ -242,16 +244,17 @@ export class ClaudeCodeCLI {
           if (code !== 0) {
             if (child.killed) {
               const timeoutSeconds = Math.round(timeoutMs / 1000);
-              reject(new ClaudeCodeError({
+              reject(createTimeoutError({
                 message: `Claude CLI timed out after ${timeoutSeconds} seconds`,
-                code: 'TIMEOUT',
                 promptExcerpt: prompt.slice(0, 100),
+                timeoutMs,
               }));
             } else {
-              reject(new ClaudeCodeError({
+              reject(createAPICallError({
                 message: `Claude CLI exited with code ${code}`,
                 exitCode: code ?? undefined,
                 promptExcerpt: prompt.slice(0, 100),
+                isRetryable: false,
               }));
             }
           } else {

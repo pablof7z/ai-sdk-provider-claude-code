@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeCodeLanguageModel } from './claude-code-language-model';
 import { ClaudeCodeCLI } from './claude-code-cli';
 import type { LanguageModelV1CallOptions } from '@ai-sdk/provider';
-import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
-import { ClaudeCodeError } from './errors';
+import { UnsupportedFunctionalityError, APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
+import { createAPICallError, createTimeoutError, getErrorMetadata } from './errors';
 import type { ClaudeCodeEvent, ClaudeCodeAssistantEvent, ClaudeCodeResultEvent, ClaudeCodeErrorEvent } from './types';
 
 vi.mock('./claude-code-cli');
@@ -353,10 +353,10 @@ describe('ClaudeCodeLanguageModel', () => {
 
     it('should handle timeout errors', async () => {
       vi.spyOn(mockCLI, 'execute').mockRejectedValue(
-        new ClaudeCodeError({
+        createTimeoutError({
           message: 'Claude CLI timed out after 120 seconds',
-          code: 'TIMEOUT',
           promptExcerpt: 'Test',
+          timeoutMs: 120000,
         })
       );
 
@@ -654,10 +654,10 @@ describe('ClaudeCodeLanguageModel', () => {
 
     it('should handle streaming timeout errors', async () => {
       const mockStream = async function* () {
-        throw new ClaudeCodeError({
+        throw createTimeoutError({
           message: 'Claude CLI timed out after 120 seconds',
-          code: 'TIMEOUT',
           promptExcerpt: 'Test stream',
+          timeoutMs: 120000,
         });
       };
       
@@ -887,9 +887,10 @@ describe('ClaudeCodeLanguageModel', () => {
 
       // First attempt: streaming fails with timeout
       mockStreamSpy.mockImplementation(async function* () {
-        throw new ClaudeCodeError({
+        throw createTimeoutError({
           message: 'Timeout',
-          code: 'TIMEOUT',
+          promptExcerpt: '',
+          timeoutMs: 120000,
         });
       });
 
@@ -918,9 +919,8 @@ describe('ClaudeCodeLanguageModel', () => {
       const mockStreamSpy = vi.spyOn(mockCLI, 'stream');
 
       mockStreamSpy.mockImplementation(async function* () {
-        throw new ClaudeCodeError({
+        throw new LoadAPIKeyError({
           message: 'Authentication required',
-          code: 'AUTH_REQUIRED',
         });
       });
 
@@ -930,7 +930,7 @@ describe('ClaudeCodeLanguageModel', () => {
         inputFormat: 'messages',
       };
 
-      await expect(model.doGenerate(options)).rejects.toThrow('Authentication required');
+      await expect(model.doGenerate(options)).rejects.toThrow('Authentication failed');
     });
   });
 });
