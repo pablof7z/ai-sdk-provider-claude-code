@@ -108,13 +108,13 @@ export class ClaudeCodeCLI {
       args.push('--dangerously-skip-permissions');
     }
 
-    // Allowed tools
-    if (config.allowedTools && config.allowedTools.length > 0) {
+    // Allowed tools - include even if empty array (explicit empty allowlist)
+    if (config.allowedTools !== undefined) {
       args.push('--allowedTools', config.allowedTools.join(','));
     }
 
-    // Disallowed tools
-    if (config.disallowedTools && config.disallowedTools.length > 0) {
+    // Disallowed tools - include even if empty array  
+    if (config.disallowedTools !== undefined) {
       args.push('--disallowedTools', config.disallowedTools.join(','));
     }
 

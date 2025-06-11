@@ -25,8 +25,8 @@ export function createClaudeCode(options: ClaudeCodeSettings = {}): ClaudeCodePr
       timeoutMs: validatedSettings.timeoutMs ?? validatedOptions.timeoutMs ?? 120000,
       sessionId: validatedSettings.sessionId ?? validatedOptions.sessionId,
       enablePtyStreaming: validatedSettings.enablePtyStreaming ?? validatedOptions.enablePtyStreaming,
-      allowedTools: validatedSettings.allowedTools ?? validatedOptions.allowedTools ?? [],
-      disallowedTools: validatedSettings.disallowedTools ?? validatedOptions.disallowedTools ?? [],
+      allowedTools: validatedSettings.allowedTools ?? validatedOptions.allowedTools,
+      disallowedTools: validatedSettings.disallowedTools ?? validatedOptions.disallowedTools,
       largeResponseThreshold: validatedSettings.largeResponseThreshold ?? validatedOptions.largeResponseThreshold,
     });
 

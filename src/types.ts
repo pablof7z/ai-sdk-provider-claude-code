@@ -88,8 +88,8 @@ export const claudeCodeModelSchema = z.object({
   model: z.enum(['opus', 'sonnet']).default('opus'),
   cliPath: z.string().default('claude'),
   skipPermissions: z.boolean().default(true),
-  allowedTools: z.array(z.string()).default([]),
-  disallowedTools: z.array(z.string()).default([]),
+  allowedTools: z.array(z.string()).optional(),
+  disallowedTools: z.array(z.string()).optional(),
   sessionId: z.string().optional(),
   enablePtyStreaming: z.boolean().optional(),
   timeoutMs: z.number().min(1000).max(600000).default(120000),
@@ -156,20 +156,36 @@ export interface ClaudeCodeSettings {
   largeResponseThreshold?: number;
 
   /**
-   * Tools to explicitly allow Claude to use during execution.
-   * Pass an array of tool names to create an allowlist.
-   * Example: ['read_file', 'list_files'] 
-   * Note: Cannot be used together with disallowedTools.
-   * @default [] (all tools allowed if disallowedTools is also empty)
+   * Tools to explicitly allow during Claude Code execution.
+   * Works for both built-in tools and MCP tools.
+   * Uses the same permission rule syntax as settings.json.
+   * 
+   * Examples:
+   * - Built-in tools: ['Read', 'LS', 'Bash(git log:*)']
+   * - MCP tools: ['mcp__filesystem__read_file', 'mcp__git__status']
+   * 
+   * Note: 
+   * - Cannot be used together with disallowedTools
+   * - Empty array ([]) creates an explicit empty allowlist (no tools allowed)
+   * - Omitting this option falls back to normal permission system
+   * @default undefined (falls back to settings.json and interactive prompts)
    */
   allowedTools?: string[];
 
   /**
-   * Tools to disallow Claude from using during execution.
-   * Pass an array of tool names to restrict access.
-   * Example: ['read_website', 'run_terminal_command']
-   * Note: Cannot be used together with allowedTools.
-   * @default [] (all tools allowed if allowedTools is also empty)
+   * Tools to disallow during Claude Code execution.
+   * Works for both built-in tools and MCP tools.
+   * Uses the same permission rule syntax as settings.json.
+   * 
+   * Examples:
+   * - Built-in tools: ['Write', 'Edit', 'Bash(rm:*)']
+   * - MCP tools: ['mcp__filesystem__write_file', 'mcp__git__push']
+   * 
+   * Note: 
+   * - Cannot be used together with allowedTools
+   * - Empty array ([]) has no effect (no tools are explicitly denied)
+   * - Omitting this option falls back to normal permission system
+   * @default undefined (falls back to settings.json and interactive prompts)
    */
   disallowedTools?: string[];
 }
