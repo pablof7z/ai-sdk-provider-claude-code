@@ -662,9 +662,17 @@ Review our examples for implementation patterns
 
 ## Error Handling
 
+The provider uses standard AI SDK error classes for better ecosystem compatibility:
+
 ```typescript
 import { generateText } from 'ai';
-import { claudeCode, isAuthenticationError } from 'ai-sdk-provider-claude-code';
+import { APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
+import { 
+  claudeCode, 
+  isAuthenticationError, 
+  isTimeoutError,
+  getErrorMetadata 
+} from 'ai-sdk-provider-claude-code';
 
 try {
   const { text } = await generateText({
@@ -674,11 +682,30 @@ try {
 } catch (error) {
   if (isAuthenticationError(error)) {
     console.error('Please run "claude login" to authenticate');
+  } else if (isTimeoutError(error)) {
+    console.error('Request timed out. Consider increasing timeoutMs.');
+  } else if (error instanceof APICallError) {
+    // Get CLI-specific metadata
+    const metadata = getErrorMetadata(error);
+    console.error('CLI error:', {
+      message: error.message,
+      isRetryable: error.isRetryable,
+      exitCode: metadata?.exitCode,
+      stderr: metadata?.stderr,
+    });
   } else {
     console.error('Error:', error);
   }
 }
 ```
+
+### Error Types
+
+- **`LoadAPIKeyError`**: Authentication failures (exit code 401)
+- **`APICallError`**: All other CLI failures
+  - `isRetryable: true` for timeouts
+  - `isRetryable: false` for CLI errors, spawn failures, etc.
+  - Contains metadata with `exitCode`, `stderr`, `promptExcerpt`
 
 ## Troubleshooting
 

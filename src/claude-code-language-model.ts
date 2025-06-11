@@ -11,7 +11,7 @@ import { UnsupportedFunctionalityError } from '@ai-sdk/provider';
 import { ClaudeCodeCLI } from './claude-code-cli.js';
 import type { ClaudeCodeModelConfig } from './types.js';
 import { isAssistantEvent, isResultEvent, isSystemEvent, isErrorEvent } from './types.js';
-import { ClaudeCodeError, isAuthenticationError } from './errors.js';
+import { createAPICallError, createAuthenticationError, isAuthenticationError, getErrorMetadata } from './errors.js';
 import { calcUsage } from './utils/usage.js';
 import { 
   parseClaudeResult, 
@@ -133,11 +133,12 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       );
 
       if (result.exitCode !== 0 && result.exitCode !== null) {
-        throw new ClaudeCodeError({
+        throw createAPICallError({
           message: `Claude CLI failed with exit code ${result.exitCode}`,
           exitCode: result.exitCode,
           stderr: result.stderr,
           promptExcerpt: promptText.slice(0, 100),
+          isRetryable: false,
         });
       }
 
@@ -151,21 +152,23 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         const lastChar = output[output.length - 1];
         const isTruncated = lastChar !== '}' && lastChar !== ']';
         
-        throw new ClaudeCodeError({
+        throw createAPICallError({
           message: isTruncated 
             ? `Claude CLI response was truncated at ${output.length} characters. This is a bug - please report it. The provider should have automatically used streaming mode.`
             : 'Failed to parse Claude CLI response as JSON',
           code: 'JSON_PARSE_ERROR',
           stderr: output.slice(0, 500),
           promptExcerpt: promptText.slice(0, 100),
+          isRetryable: false,
         });
       }
       
       // Check for errors
       if (jsonResponse.is_error) {
-        throw new ClaudeCodeError({
+        throw createAPICallError({
           message: jsonResponse.error || 'Claude CLI returned an error',
           code: 'CLI_ERROR',
+          isRetryable: false,
         });
       }
 
@@ -210,9 +213,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       };
     } catch (error) {
       if (isAuthenticationError(error)) {
-        throw new ClaudeCodeError({
+        throw createAuthenticationError({
           message: 'Authentication failed. Please run "claude login" to authenticate.',
-          code: 'AUTH_REQUIRED',
         });
       }
       throw error;
@@ -306,9 +308,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                   providerMetadata: buildProviderMetadata(this.sessionId, parsed),
                 } as LanguageModelV1StreamPart);
               } else if (isErrorEvent(event)) {
-                controller.error(new ClaudeCodeError({
+                controller.error(createAPICallError({
                   message: event.error.message || 'Claude CLI error',
                   code: event.error.code || 'CLI_ERROR',
+                  isRetryable: false,
                 }));
                 return;
               }
@@ -317,9 +320,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
             controller.close();
           } catch (error) {
             if (isAuthenticationError(error)) {
-              controller.error(new ClaudeCodeError({
+              controller.error(createAuthenticationError({
                 message: 'Authentication failed. Please run "claude login" to authenticate.',
-                code: 'AUTH_REQUIRED',
               }));
             } else {
               controller.error(error);
@@ -451,9 +453,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           usage = calcUsage(parsed.usage);
           providerMetadata = buildProviderMetadata(sessionId, parsed);
         } else if (isErrorEvent(event)) {
-          throw new ClaudeCodeError({
+          throw createAPICallError({
             message: event.error.message || 'Claude CLI error',
             code: event.error.code || 'CLI_ERROR',
+            isRetryable: false,
           });
         }
       }
@@ -490,9 +493,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       };
     } catch (error) {
       if (isAuthenticationError(error)) {
-        throw new ClaudeCodeError({
+        throw createAuthenticationError({
           message: 'Authentication failed. Please run "claude login" to authenticate.',
-          code: 'AUTH_REQUIRED',
         });
       }
       throw error;
@@ -501,8 +503,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
 
   private isRetryableStreamError(error: unknown): boolean {
     // Only retry on specific errors that might succeed with non-streaming
-    if (error instanceof ClaudeCodeError) {
-      return error.code === 'TIMEOUT' || error.code === 'STREAM_ERROR';
+    const metadata = getErrorMetadata(error);
+    if (metadata) {
+      return metadata.code === 'TIMEOUT' || metadata.code === 'STREAM_ERROR';
     }
     return false;
   }

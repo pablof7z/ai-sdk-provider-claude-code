@@ -54,6 +54,42 @@ This guide documents common issues and solutions discovered during the developme
 
 3. **For very long tasks**, consider breaking them into smaller chunks or using streaming approaches.
 
+### 5. Error Handling with Standard AI SDK Errors
+
+**Problem**: Need to handle different types of errors appropriately.
+
+**Solution**: The provider now uses standard AI SDK error classes:
+
+```typescript
+import { APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
+import { isAuthenticationError, isTimeoutError, getErrorMetadata } from 'ai-sdk-provider-claude-code';
+
+try {
+  // Your code here
+} catch (error) {
+  if (isAuthenticationError(error)) {
+    // Handle authentication error - user needs to run 'claude login'
+  } else if (isTimeoutError(error)) {
+    // Handle timeout - consider retrying with longer timeout
+  } else if (error instanceof APICallError) {
+    // Check if retryable
+    if (error.isRetryable) {
+      // Implement retry logic
+    }
+    // Get CLI-specific metadata
+    const metadata = getErrorMetadata(error);
+    console.log('Exit code:', metadata?.exitCode);
+  }
+}
+```
+
+**Error Types**:
+- **`LoadAPIKeyError`**: Authentication failures (exit code 401)
+- **`APICallError`**: All other CLI failures
+  - Timeouts have `isRetryable: true`
+  - Other errors have `isRetryable: false`
+  - Contains metadata accessible via `getErrorMetadata()`
+
 ## Debugging Commands
 
 ### Check CLI Installation
