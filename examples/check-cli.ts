@@ -1,49 +1,52 @@
-import { execSync } from 'child_process';
+/**
+ * Check if the Claude Code SDK is properly installed and authenticated
+ * This example verifies the setup before running other examples
+ */
 
-console.log('Checking Claude CLI installation...\n');
+import { generateText } from 'ai';
+import { createClaudeCode } from '../dist/index.js';
 
-try {
-  // Check if Claude CLI is installed
-  const version = execSync('claude --version', { encoding: 'utf8' }).trim();
-  console.log('✅ Claude CLI is installed');
-  console.log('Version:', version);
-  
-  console.log('\nNow checking authentication...');
-  
+async function checkSetup() {
+  console.log('🔍 Checking Claude Code SDK setup...\n');
+
+  const claudeCode = createClaudeCode();
+
   try {
-    // Try a simple command that requires auth
-    const result = execSync(
-      'claude -p "Say hello" --print --output-format json --dangerously-skip-permissions', 
-      { encoding: 'utf8', stdio: 'pipe' }
-    );
+    // Try a simple generation to verify everything works
+    console.log('Testing SDK connection...');
     
-    // Parse the JSON response to verify it worked
-    const response = JSON.parse(result.trim());
-    if (response.result || response.is_error === false) {
-      console.log('✅ Claude CLI is authenticated\n');
-      console.log('You can run the examples and integration tests!');
+    const { text, usage } = await generateText({
+      model: claudeCode('sonnet'),
+      prompt: 'Say "Hello from Claude" and nothing else.',
+    });
+
+    console.log('✅ Claude Code SDK is working properly!');
+    console.log('Response:', text);
+    console.log('Tokens used:', usage.totalTokens);
+    console.log('\n🎉 You can run all the examples and integration tests!');
+    
+  } catch (error: any) {
+    console.error('❌ Failed to connect to Claude Code');
+    console.error('Error:', error.message);
+    
+    if (error.message?.includes('not found') || error.message?.includes('ENOENT')) {
+      console.log('\n💡 Make sure Claude Code CLI is installed:');
+      console.log('   npm install -g @anthropic-ai/claude-code');
+    } else if (error.message?.includes('authentication') || error.message?.includes('401')) {
+      console.log('\n🔐 Authentication required. Please run:');
+      console.log('   claude login');
     } else {
-      console.log('❌ Claude CLI returned an error\n');
-      console.log('Please check your authentication: claude login');
+      console.log('\n🔧 Troubleshooting tips:');
+      console.log('1. Install Claude Code CLI: npm install -g @anthropic-ai/claude-code');
+      console.log('2. Authenticate: claude login');
+      console.log('3. Verify installation: claude --version');
     }
-  } catch (authError: any) {
-    if (authError.status === 127) {
-      console.log('❌ Claude CLI command failed');
-    } else if (authError.stderr?.includes('authentication') || authError.status === 401) {
-      console.log('❌ Claude CLI is not authenticated\n');
-      console.log('Please run: claude login');
-    } else {
-      console.log('❌ Failed to verify authentication');
-      console.log('Error:', authError.message);
-    }
-  }
-} catch (error: any) {
-  if (error.status === 127) {
-    console.log('❌ Claude CLI is not installed or not in PATH');
-    console.log('\nTo install: npm install -g @anthropic-ai/claude-code');
-  } else {
-    console.log('❌ Failed to run Claude CLI:', error.message);
-    console.log('\nMake sure Claude CLI is installed:');
-    console.log('npm install -g @anthropic-ai/claude-code');
+    
+    process.exit(1);
   }
 }
+
+checkSetup().catch((error) => {
+  console.error('Unexpected error:', error);
+  process.exit(1);
+});

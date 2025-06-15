@@ -199,14 +199,31 @@ describe('ClaudeCodeLanguageModel', () => {
   });
 
   describe('model configuration', () => {
-    it('should map model IDs correctly', () => {
+    it('should store model ID correctly', () => {
       const sonnetModel = new ClaudeCodeLanguageModel({ id: 'sonnet' });
-      // @ts-ignore - accessing private method for testing
-      expect(sonnetModel.getModel()).toBe('sonnet');
+      expect(sonnetModel.modelId).toBe('sonnet');
 
       const opusModel = new ClaudeCodeLanguageModel({ id: 'opus' });
-      // @ts-ignore - accessing private method for testing
-      expect(opusModel.getModel()).toBe('opus');
+      expect(opusModel.modelId).toBe('opus');
+      
+      // Test custom model ID
+      const customModel = new ClaudeCodeLanguageModel({ id: 'custom-model' });
+      expect(customModel.modelId).toBe('custom-model');
+    });
+    
+    it('should have correct provider name', () => {
+      const model = new ClaudeCodeLanguageModel({ id: 'sonnet' });
+      expect(model.provider).toBe('claude-code');
+    });
+    
+    it('should have correct specification version', () => {
+      const model = new ClaudeCodeLanguageModel({ id: 'sonnet' });
+      expect(model.specificationVersion).toBe('v1');
+    });
+    
+    it('should support object generation mode', () => {
+      const model = new ClaudeCodeLanguageModel({ id: 'sonnet' });
+      expect(model.defaultObjectGenerationMode).toBe('json');
     });
   });
 });
