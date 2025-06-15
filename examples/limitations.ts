@@ -42,8 +42,8 @@ async function main() {
     console.error('   Error:', error);
   }
 
-  // 2. Object generation - throws error
-  console.log('2. Object generation (throws UnsupportedFunctionalityError):');
+  // 2. Object generation - works via prompt engineering
+  console.log('2. Object generation (works with limitations):');
   
   const PersonSchema = z.object({
     name: z.string(),
@@ -58,12 +58,11 @@ async function main() {
       schema: PersonSchema,
       prompt: 'Generate a person who is a software developer',
     });
-    console.log('   This should not be reached:', object);
+    console.log('   ✅ Object generated:', object);
+    console.log('   Note: Uses prompt engineering + JSON extraction');
+    console.log('         Only object-json mode is supported (not object-tool)');
   } catch (error: any) {
-    console.log('   ❌ Expected error:', error.message);
-    console.log('   Error type:', error.constructor.name);
-    console.log('   Note: Since defaultObjectGenerationMode is undefined,');
-    console.log('         the AI SDK throws an error before reaching our provider');
+    console.log('   ❌ Error:', error.message);
   }
 
   // 3. Tool/Function calling - not supported
@@ -106,9 +105,9 @@ async function main() {
   console.log('   - Use explicit instructions: "Keep your response brief"\n');
   
   console.log('3. For structured output:');
-  console.log('   - Ask for JSON in your prompt and parse manually');
-  console.log('   - Use clear formatting instructions');
-  console.log('   - Example prompt: "Return only valid JSON with name and age fields"\n');
+  console.log('   - Use generateObject/streamObject (now supported!');
+  console.log('   - Provider automatically handles JSON extraction');
+  console.log('   - Only object-json mode is supported\n');
   
   console.log('4. For deterministic output:');
   console.log('   - Not possible with Claude Code CLI');
@@ -125,6 +124,7 @@ async function main() {
   
   console.log('✅ What DOES work well:');
   console.log('- Basic text generation and streaming');
+  console.log('- Object generation via generateObject/streamObject');
   console.log('- Conversation context via message history');
   console.log('- Custom timeouts and session management');
   console.log('- Abort signals for cancellation');

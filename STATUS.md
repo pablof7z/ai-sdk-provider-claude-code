@@ -1,135 +1,216 @@
-# Claude Code AI SDK Provider - Project Status
+# Community Provider Status Analysis
 
-## ✅ What's Working
+## Overview
+This document analyzes the requirements for ai-sdk-provider-claude-code to achieve community provider status in the Vercel AI SDK ecosystem.
 
-### Core Functionality
-- **Text Generation**: Full text generation with Claude models (opus, sonnet)
-- **System Messages**: Complete support for system prompts
-- **Multi-turn Conversations**: Two robust approaches:
-  1. **Message history** (recommended) - Standard AI SDK pattern with full context
-  2. **Session IDs** with `--resume` flag - Working session continuity
-- **Error Handling**: Comprehensive error propagation with authentication detection
-- **Provider Metadata**: Rich metadata including session IDs, timing, costs, and detailed usage
-- **Streaming**: Unified spawn-based implementation with zero-latency streaming using readline interface
-- **Timeout Configuration**: Fully configurable timeouts (1s-10min) optimized for Claude Opus 4
-- **Object Generation**: Support for `generateObject`/`streamObject` via prompt engineering with Zod schema validation
-- **Auto-Streaming**: Automatic internal streaming for large responses to prevent 8K stdout truncation
+## Current Implementation Status
 
-### Implementation Details
-- **Unified Architecture**: Uses `spawn` with stdin communication for both streaming and non-streaming
-- **Zero-Latency Streaming**: Readline interface eliminates polling delays for immediate response
-- **Timeout Handling**: Configurable at provider and model levels with proper validation
-- **Type Safety**: Complete TypeScript implementation with proper interfaces and type guards
-- **Session Management**: Working session resumption with `--resume` flag
-- **Process Management**: Concurrent request handling with configurable process limits
-- **JSON Schema Validation**: Full Zod schema integration for structured data generation
+### ✅ What We Have
 
-## ⚠️ Limitations
+#### Core Functionality
+- **SDK Integration**: Uses official `@anthropic-ai/claude-code` SDK for all Claude interactions
+- **Text Generation**: Full support for both streaming and non-streaming text generation
+- **Object Generation**: Reliable JSON generation through prompt engineering and extraction
+- **Multi-turn Conversations**: Proper message history support (recommended AI SDK pattern)
+- **Provider Metadata**: Rich metadata including sessionId, costUsd, durationMs, and rawUsage
+- **Error Handling**: Comprehensive error handling with authentication detection
+- **AbortSignal Support**: Standard AI SDK pattern for timeouts and cancellation
 
-### Streaming
-- Uses event-driven streaming with readline interface for zero latency
-- No external dependencies required for streaming functionality
-- Works consistently across all Node.js environments
+#### Build & Distribution
+- **TypeScript**: Full TypeScript support with proper type definitions
+- **Dual Formats**: Both CommonJS and ES Module builds via tsup
+- **Source Maps**: Generated for debugging support
+- **Package Structure**: Proper exports configuration for modern Node.js
 
-### Session Management
-- Claude CLI returns new session ID for each interaction (even with --resume)
-- Context is maintained correctly despite new IDs
-- Session IDs accessible via `providerMetadata`
+#### Testing
+- **Unit Tests**: Comprehensive test coverage with Vitest
+- **Integration Tests**: Full integration test suite
+- **Edge/Node Tests**: Separate configurations for different environments
+- **Examples**: Extensive example collection demonstrating all features
 
-### Platform Support
-- Requires Node.js environment with `child_process` support
-- Limited to text generation (no image support due to CLI limitation)
-- Requires local Claude Code CLI installation and authentication
-- Object generation requires complete response (no real-time streaming for JSON)
+#### Documentation
+- **README**: Comprehensive documentation with examples
+- **CHANGELOG**: Proper version history following Keep a Changelog format
+- **Examples README**: Detailed guide for all example files
+- **API Documentation**: Clear documentation of all configuration options
 
-## 📁 Project Structure
+### 🚀 Meeting AI SDK Standards
+
+Based on analysis of official providers (Mistral, OpenAI, etc.), we now meet all requirements:
+
+1. **Provider Pattern** ✅
+   - Factory function with provider instance
+   - Default export
+   - Proper settings interface
+   - Protection against `new` keyword misuse
+
+2. **Language Model Implementation** ✅
+   - `specificationVersion: 'v1'`
+   - Correct `doGenerate` and `doStream` methods
+   - Proper provider metadata
+   - Object generation support
+
+3. **Build System** ✅
+   - tsup for dual format builds
+   - Source maps
+   - Proper package.json configuration
+
+4. **Testing** ✅
+   - Separate edge/node configurations
+   - Unit and integration tests
+   - Example test coverage
+
+5. **Error Handling** ✅
+   - Standard AI SDK error classes
+   - Proper `isRetryable` flags
+   - AbortSignal support
+
+## 📁 Current Project Structure
 
 ```
-/src
-  ├── index.ts                       # Main exports
-  ├── claude-code-provider.ts        # Provider factory with timeout config
-  ├── claude-code-language-model.ts  # AI SDK implementation with full metadata
-  ├── claude-code-cli.ts             # Unified spawn-based CLI wrapper with readline streaming
-  ├── claude-code-parser.ts          # JSON event parser for streaming
-  ├── errors.ts                      # Comprehensive error handling
-  ├── types.ts                       # TypeScript types with validation schemas
-  └── utils/                         # Utility functions
-      ├── parse.ts                   # Parsing and metadata helpers
-      └── usage.ts                   # Token usage calculation
-
-/examples
-  ├── README.md                      # Examples documentation
-  ├── basic-usage.ts                 # Simple text generation with metadata
-  ├── streaming.ts                   # Streaming response demo
-  ├── custom-config.ts               # Provider configuration options
-  ├── timeout-config.ts              # Timeout configuration examples
-  ├── conversation-history.ts        # Multi-turn conversation with message history
-  ├── generate-object.ts             # Original object generation example
-  ├── generate-object-basic.ts       # Basic object generation patterns
-  ├── generate-object-nested.ts      # Complex nested structures
-  ├── generate-object-constraints.ts # Validation and constraints
-  ├── tool-management.ts             # Tool access control (allow/disallow)
-  ├── test-session.ts                # Session management testing
-  ├── abort-signal.ts                # Request cancellation examples
-  ├── limitations.ts                 # Provider limitations demo
-  ├── integration-test.ts            # Comprehensive integration tests
-  └── check-cli.ts                   # CLI installation verification
-
-/tests
-  ├── claude-code-language-model.test.ts  # Language model unit tests
-  ├── claude-code-provider.test.ts        # Provider factory tests
-  ├── claude-code-cli.test.ts             # CLI wrapper tests
-  └── claude-code-parser.test.ts          # Response parser tests
+ai-sdk-provider-claude-code/
+├── src/
+│   ├── index.ts                          # Main exports
+│   ├── claude-code-provider.ts           # Provider factory
+│   ├── claude-code-language-model.ts     # Language model implementation
+│   ├── convert-to-claude-code-messages.ts # Message formatting
+│   ├── extract-json.ts                   # JSON extraction for objects
+│   ├── errors.ts                         # Error utilities
+│   └── types.ts                          # TypeScript definitions
+├── examples/
+│   ├── README.md                         # Examples guide
+│   ├── basic-usage.ts                    # Simple generation
+│   ├── streaming.ts                      # Streaming demo
+│   ├── conversation-history.ts           # Multi-turn conversations
+│   ├── custom-config.ts                  # Configuration options
+│   ├── generate-object-*.ts              # Object generation examples
+│   ├── tool-management.ts                # Tool access control
+│   ├── long-running-tasks.ts             # Timeout handling
+│   ├── abort-signal.ts                   # Cancellation
+│   ├── integration-test.ts               # Test suite
+│   └── check-cli.ts                      # Setup verification
+├── vitest.config.js                      # Test configuration
+├── vitest.edge.config.js                 # Edge runtime tests
+├── vitest.node.config.js                 # Node runtime tests
+├── tsup.config.ts                        # Build configuration
+├── package.json                          # Package metadata
+├── CHANGELOG.md                          # Version history
+├── README.md                             # Main documentation
+└── LICENSE                               # MIT license
 ```
 
-## 🚀 Recent Achievements
+## 🎯 Ready for Community Status
 
-### ✅ Completed
-1. **✅ Architectural Overhaul**: Fixed spawn implementation using stdin instead of command arguments
-2. **✅ Zero-Latency Streaming**: Replaced polling with readline interface for immediate response
-3. **✅ Unified CLI**: Consolidated three implementations (sync/PTY/spawn) into single spawn-based approach
-4. **✅ Timeout Configuration**: Fully configurable timeouts (1s-10min) optimized for Claude Opus 4
-5. **✅ Type Safety**: Eliminated all TypeScript 'any' types with proper interfaces and type guards
-6. **✅ Token Usage**: Working token usage tracking with detailed breakdowns
-7. **✅ Provider Metadata**: Rich metadata including costs, timing, and session information
-8. **✅ Comprehensive Testing**: All tests updated and passing with new architecture
-9. **✅ Documentation**: Complete documentation with streaming improvements
-10. **✅ Object Generation**: Full support for structured data generation with JSON schema validation
-11. **✅ AI SDK v4 Compatibility**: Updated to latest AI SDK version with all required fields
-12. **✅ Auto-Streaming**: Prevents 8K truncation by automatically using streaming for large responses
+The provider now meets all requirements for community provider status:
 
-### 🎯 Current Status
-- **Production Ready**: Full AI SDK provider implementation
-- **Type Safe**: Complete TypeScript coverage with validation
-- **Well Tested**: Comprehensive test suite and example coverage
-- **Documented**: Full documentation including timeout configuration
-- **Optimized**: 2-minute default timeout perfect for Claude Opus 4's dual-mode responses
+### Technical Requirements ✅
+- Implements LanguageModelV1 specification
+- Follows provider factory pattern
+- Uses standard error handling
+- Supports AbortSignal
+- Has proper TypeScript types
+- Includes comprehensive tests
 
-## 🔧 Current Behavior
+### Build Requirements ✅
+- Uses tsup for builds
+- Generates both CJS and ESM
+- Includes source maps
+- Has proper package.json configuration
 
-### Working Features
-- ✅ Text generation with full metadata
-- ✅ Zero-latency streaming with readline interface
-- ✅ Multi-turn conversations via message history
-- ✅ Session management with resumption
-- ✅ Configurable timeouts (1s-10min)
-- ✅ Error handling with authentication detection
-- ✅ Token usage tracking and cost information
-- ✅ TypeScript type safety throughout
-- ✅ Concurrent request handling with process pooling
-- ✅ Object generation with Zod schema validation
-- ✅ AI SDK v4 compatibility with latest interfaces
+### Documentation Requirements ✅
+- Comprehensive README
+- CHANGELOG with version history
+- Extensive examples
+- Clear setup instructions
 
-### Known Characteristics
-- Session IDs change on each interaction (Claude CLI behavior - context still maintained)
-- Uses spawn with stdin communication for both streaming and non-streaming
-- Readline interface provides zero-latency streaming without external dependencies
-- Object generation waits for complete response before parsing JSON (no real-time streaming)
+## Next Steps for Community Submission
 
-## 📝 Usage Notes
+1. **Publish to npm**
+   ```bash
+   npm publish
+   ```
 
-- **Authentication**: Always run `claude login` before using the provider
-- **Conversations**: Use message history approach (most reliable)
-- **Timeouts**: Default 2-minute timeout works for most cases, increase for complex Opus 4 tasks
-- **Debugging**: Use `examples/check-cli.ts` to verify installation
-- **Performance**: Works well with prompts of any length thanks to configurable timeouts
+2. **Prepare MDX Documentation**
+   Create a documentation file following the community provider format (see example below)
+
+3. **Submit PR to AI SDK Repository**
+   - Add provider to community providers list
+   - Include MDX documentation
+   - Reference npm package
+
+## Example Community Provider MDX
+
+```mdx
+---
+title: Claude Code
+description: Use Claude via the official Claude Code SDK with your Pro/Max subscription
+---
+
+# Claude Code Provider
+
+[ben-vargas/ai-sdk-provider-claude-code](https://github.com/ben-vargas/ai-sdk-provider-claude-code) 
+is a community provider that uses the official [Claude Code SDK](https://www.npmjs.com/package/@anthropic-ai/claude-code) 
+to provide language model support for the AI SDK.
+
+## Setup
+
+The Claude Code provider is available in the `ai-sdk-provider-claude-code` module. You can install it with:
+
+<Tabs items={['pnpm', 'npm', 'yarn']}>
+  <Tab>
+    <Snippet text="pnpm add ai-sdk-provider-claude-code" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install ai-sdk-provider-claude-code" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add ai-sdk-provider-claude-code" dark />
+  </Tab>
+</Tabs>
+
+### Prerequisites
+
+Install and authenticate the Claude Code CLI:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude login
+```
+
+## Provider Instance
+
+You can import the default provider instance `claudeCode` from `ai-sdk-provider-claude-code`:
+
+```ts
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+```
+
+## Language Models
+
+The Claude Code provider supports the following models:
+
+- `sonnet` - Claude 3 Sonnet (balanced speed and capability)
+- `opus` - Claude 3 Opus (most capable)
+
+```ts
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+
+const { text } = await generateText({
+  model: claudeCode('sonnet'),
+  prompt: 'Explain recursion in one sentence',
+});
+```
+
+### Model Capabilities
+
+| Model | Text Generation | Object Generation | Image Input | Tool Calling |
+|-------|----------------|-------------------|-------------|--------------|
+| opus  | ✅ | ✅ | ❌ | ❌ |
+| sonnet | ✅ | ✅ | ❌ | ❌ |
+
+<Note>
+  The provider uses the official Claude Code SDK. Image inputs and native tool calling 
+  are not supported, but you can configure MCP servers for extended functionality.
+</Note>
+```
