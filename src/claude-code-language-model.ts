@@ -11,11 +11,7 @@ import type { ClaudeCodeSettings } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
 import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
 
-// @ts-ignore - SDK types are not exported properly
-import { query, AbortError } from '@anthropic-ai/claude-code/sdk.mjs';
-
-type SDKMessage = any;
-type Options = any;
+import { query, AbortError, type Options, type SDKMessage } from '@anthropic-ai/claude-code';
 
 export interface ClaudeCodeLanguageModelOptions {
   id: ClaudeCodeModelId;
@@ -75,7 +71,6 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       model: this.getModel(),
       abortController,
       resume: this.sessionId,
-      timeoutMs: this.settings.timeoutMs,
       pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
       customSystemPrompt: this.settings.customSystemPrompt,
       appendSystemPrompt: this.settings.appendSystemPrompt,
@@ -84,12 +79,12 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       cwd: this.settings.cwd,
       executable: this.settings.executable,
       executableArgs: this.settings.executableArgs,
-      permissionMode: this.settings.permissionMode,
+      permissionMode: this.settings.permissionMode as any, // SDK expects specific string type
       permissionPromptToolName: this.settings.permissionPromptToolName,
       continue: this.settings.continue,
       allowedTools: this.settings.allowedTools,
       disallowedTools: this.settings.disallowedTools,
-      mcpServers: this.settings.mcpServers,
+      mcpServers: this.settings.mcpServers as any, // SDK has specific type for this
     };
 
     let text = '';
@@ -166,7 +161,6 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       model: this.getModel(),
       abortController,
       resume: this.sessionId,
-      timeoutMs: this.settings.timeoutMs,
       pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
       customSystemPrompt: this.settings.customSystemPrompt,
       appendSystemPrompt: this.settings.appendSystemPrompt,
@@ -175,12 +169,12 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       cwd: this.settings.cwd,
       executable: this.settings.executable,
       executableArgs: this.settings.executableArgs,
-      permissionMode: this.settings.permissionMode,
+      permissionMode: this.settings.permissionMode as any, // SDK expects specific string type
       permissionPromptToolName: this.settings.permissionPromptToolName,
       continue: this.settings.continue,
       allowedTools: this.settings.allowedTools,
       disallowedTools: this.settings.disallowedTools,
-      mcpServers: this.settings.mcpServers,
+      mcpServers: this.settings.mcpServers as any, // SDK has specific type for this
     };
 
     const warnings: LanguageModelV1CallWarning[] = [];
@@ -229,9 +223,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 finishReason,
                 usage,
                 providerMetadata: {
-                  sessionId: message.session_id,
-                  costUsd: message.total_cost_usd,
-                  durationMs: message.duration_ms,
+                  'claude-code': {
+                    sessionId: message.session_id,
+                    costUsd: message.total_cost_usd,
+                    durationMs: message.duration_ms,
+                  },
                 },
               });
             } else if (message.type === 'system' && message.subtype === 'init') {

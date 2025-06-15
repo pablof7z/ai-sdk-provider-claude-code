@@ -7,7 +7,6 @@ async function main() {
     const claude = createClaudeCode({
       pathToClaudeCodeExecutable: 'claude', // or '/usr/local/bin/claude' if not in PATH
       permissionMode: 'default', // Ask for permissions (or 'bypassPermissions' to skip)
-      timeoutMs: 300000, // 5 minutes timeout for complex tasks
     });
 
     // Use the custom provider

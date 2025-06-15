@@ -50,7 +50,8 @@
         "example:object:nested": "npm run build && npx tsx examples/generate-object-nested.ts",
         "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts",
         "example:tools": "npm run build && npx tsx examples/tool-management.ts",
-        "example:all": "npm run build && npm run example:basic && npm run example:streaming && npm run example:conversation && npm run example:config && npm run example:object:basic && npm run example:object:nested && npm run example:object:constraints && npm run example:tools"
+        "example:timeout": "npm run build && npx tsx examples/long-running-tasks.ts",
+        "example:all": "npm run build && npm run example:basic && npm run example:streaming && npm run example:conversation && npm run example:config && npm run example:object:basic && npm run example:object:nested && npm run example:object:constraints && npm run example:tools && npm run example:timeout"
     },
     "dependencies": {
         "@ai-sdk/provider": "1.1.3",

@@ -31,28 +31,42 @@ This guide documents common issues and solutions discovered during the developme
 
 **Solution**: Continue using the `--resume` flag with the original session ID. The conversation context will be preserved.
 
-### 4. Claude CLI Timeout Errors
+### 4. Handling Long-Running Tasks
 
-**Problem**: Getting timeout errors like "Claude CLI timed out after 120 seconds" especially with Claude Opus 4.
+**Problem**: Complex queries with Claude Opus 4 may take longer due to extended thinking mode.
 
-**Root Cause**: Claude Opus 4 can use extended thinking mode for complex queries, which may take longer than the default 2-minute timeout.
+**Root Cause**: Claude Opus 4 can engage in deep reasoning that requires more processing time.
 
-**Solutions**:
-1. **Increase timeout for complex tasks**:
-   ```typescript
-   // 5-minute timeout for complex reasoning
-   const claude = createClaudeCode({ timeoutMs: 300000 });
-   
-   // Or per-model override
-   const model = claude('opus', { timeoutMs: 600000 }); // 10 minutes
-   ```
+**Solution**: Use AbortSignal with custom timeouts:
 
-2. **Use appropriate timeouts by task complexity**:
-   - Simple queries: Default 2 minutes is sufficient
-   - Complex reasoning: 5-10 minutes recommended
-   - Maximum allowed: 10 minutes (matches Anthropic's API limit)
+```typescript
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-3. **For very long tasks**, consider breaking them into smaller chunks or using streaming approaches.
+// Create a custom timeout
+const controller = new AbortController();
+const timeoutId = setTimeout(() => {
+  controller.abort(new Error('Request timeout'));
+}, 300000); // 5 minutes
+
+try {
+  const { text } = await generateText({
+    model: claudeCode('opus'),
+    prompt: 'Complex reasoning task...',
+    abortSignal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('Request timed out');
+  }
+}
+```
+
+**Guidelines**:
+- Simple queries: 1-2 minutes usually sufficient
+- Complex reasoning: 5-10 minutes may be needed
+- Very long tasks: Consider breaking into smaller chunks
 
 ### 5. Error Handling with Standard AI SDK Errors
 
@@ -69,8 +83,8 @@ try {
 } catch (error) {
   if (isAuthenticationError(error)) {
     // Handle authentication error - user needs to run 'claude login'
-  } else if (isTimeoutError(error)) {
-    // Handle timeout - consider retrying with longer timeout
+  } else if (error.name === 'AbortError') {
+    // Handle abort/timeout - consider retrying with longer timeout
   } else if (error instanceof APICallError) {
     // Check if retryable
     if (error.isRetryable) {
@@ -117,12 +131,12 @@ claude -p "My name is Alice" --print --output-format json
 claude --resume <session_id> -p "What is my name?" --print --output-format json
 ```
 
-### Test Timeout Configuration
+### Test Long-Running Tasks
 ```bash
-# Run the timeout configuration example
-npx tsx examples/timeout-config.ts
+# Run the long-running tasks example
+npx tsx examples/long-running-tasks.ts
 
-# Or test a specific timeout manually with Claude CLI
+# Or test execution time manually with Claude CLI
 time claude -p "Explain quantum computing in detail" --print --output-format json
 ```
 

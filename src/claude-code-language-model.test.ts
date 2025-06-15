@@ -1,30 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeCodeLanguageModel } from './claude-code-language-model.js';
 
-// Mock the SDK module
-vi.mock('@anthropic-ai/claude-code/sdk.mjs', () => {
-  const mockQuery = vi.fn();
+// Mock the SDK module with factory function
+vi.mock('@anthropic-ai/claude-code', () => {
   return {
-    query: mockQuery,
-    AbortError: class AbortError extends Error {},
-    default: { query: mockQuery },
+    query: vi.fn(),
+    AbortError: class AbortError extends Error {
+      constructor(message?: string) {
+        super(message);
+        this.name = 'AbortError';
+      }
+    },
   };
 });
 
+// Import the mocked module to get typed references
+import { query as mockQuery, AbortError as MockAbortError } from '@anthropic-ai/claude-code';
+
 describe('ClaudeCodeLanguageModel', () => {
   let model: ClaudeCodeLanguageModel;
-  let mockQuery: any;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    const sdkModule = await import('@anthropic-ai/claude-code/sdk.mjs');
-    mockQuery = sdkModule.query as any;
     
     model = new ClaudeCodeLanguageModel({
       id: 'sonnet',
-      settings: {
-        timeoutMs: 5000,
-      },
+      settings: {},
     });
   });
 
@@ -62,7 +63,7 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      mockQuery.mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse);
 
       const result = await model.doGenerate({
         prompt: [{ role: 'user', content: 'Say hello' }],
@@ -98,7 +99,7 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      mockQuery.mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse);
 
       const result = await model.doGenerate({
         prompt: [{ role: 'user', content: 'Complex task' }],
@@ -106,6 +107,28 @@ describe('ClaudeCodeLanguageModel', () => {
       });
 
       expect(result.finishReason).toBe('length');
+    });
+
+    it('should handle AbortError correctly', async () => {
+      const abortController = new AbortController();
+      const abortReason = new Error('User cancelled');
+      
+      // Set up the mock to throw AbortError when called
+      vi.mocked(mockQuery).mockImplementation(() => {
+        throw new MockAbortError('Operation aborted');
+      });
+
+      // Abort before calling to ensure signal.aborted is true
+      abortController.abort(abortReason);
+
+      const promise = model.doGenerate({
+        prompt: [{ role: 'user', content: 'Test abort' }],
+        mode: { type: 'regular' },
+        abortSignal: abortController.signal,
+      });
+
+      // Should throw the abort reason since signal is aborted
+      await expect(promise).rejects.toThrow(abortReason);
     });
   });
 
@@ -139,7 +162,7 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      mockQuery.mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse);
 
       const result = await model.doStream({
         prompt: [{ role: 'user', content: 'Say hello' }],
@@ -176,28 +199,6 @@ describe('ClaudeCodeLanguageModel', () => {
   });
 
   describe('model configuration', () => {
-    it('should validate timeout range', () => {
-      expect(() => {
-        new ClaudeCodeLanguageModel({
-          id: 'sonnet',
-          settings: {
-            timeoutMs: 500, // Too low
-          },
-        });
-      }).not.toThrow(); // Constructor doesn't validate, getArgs does
-
-      const invalidModel = new ClaudeCodeLanguageModel({
-        id: 'sonnet',
-        settings: {
-          timeoutMs: 500,
-        },
-      });
-
-      // Timeout validation happens in SDK now, not in our code
-      // Just verify the model was created with invalid timeout
-      expect(invalidModel.settings.timeoutMs).toBe(500);
-    });
-
     it('should map model IDs correctly', () => {
       const sonnetModel = new ClaudeCodeLanguageModel({ id: 'sonnet' });
       // @ts-ignore - accessing private method for testing

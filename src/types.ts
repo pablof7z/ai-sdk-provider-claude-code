@@ -7,13 +7,6 @@ export interface ClaudeCodeSettings {
   model?: 'opus' | 'sonnet';
 
   /**
-   * Timeout for CLI operations in milliseconds
-   * Range: 1-600 seconds (1,000-600,000ms)
-   * @default 120000 (120 seconds)
-   */
-  timeoutMs?: number;
-
-  /**
    * Custom path to Claude Code CLI executable
    * @default 'claude' (uses system PATH)
    */

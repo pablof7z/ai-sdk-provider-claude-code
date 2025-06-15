@@ -11,7 +11,7 @@ examples/
 ├── streaming.ts                   # Streaming examples
 ├── conversation-history.ts        # Multi-turn conversations
 ├── custom-config.ts               # Configuration options
-├── timeout-config.ts              # Timeout configuration examples
+├── long-running-tasks.ts          # Handling timeouts with AbortSignal
 ├── tool-management.ts             # Tool access control (allow/disallow)
 ├── test-session.ts                # Session management
 ├── abort-signal.ts                # Request cancellation with AbortController

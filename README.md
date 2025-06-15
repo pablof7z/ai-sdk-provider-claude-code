@@ -63,7 +63,7 @@ npx tsx examples/basic-usage.ts
 - 💬 Session management for multi-turn conversations
 - 🔐 No API keys required (uses Claude Code OAuth)
 - 🛡️ TypeScript support with full type safety
-- ⏱️ Configurable timeouts (1s-10min) optimized for Claude Opus 4
+- 🛑 Standard AbortSignal support for request cancellation
 - 📈 Token usage statistics with detailed breakdowns
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
 - ⚡ Native streaming via AsyncGenerator pattern
@@ -169,23 +169,34 @@ console.log(object);
 // }
 ```
 
-### Timeout Configuration
+### Handling Long-Running Tasks
+
+For complex tasks with Claude Opus 4's extended thinking, use AbortSignal with custom timeouts:
 
 ```typescript
-import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-// Default: 2-minute timeout
-const claude = createClaudeCode();
+// Create a custom timeout
+const controller = new AbortController();
+const timeoutId = setTimeout(() => {
+  controller.abort(new Error('Request timeout after 10 minutes'));
+}, 600000); // 10 minutes
 
-// For complex Opus 4 tasks: longer timeout
-const claudeLong = createClaudeCode({
-  timeoutMs: 600000, // 10 minutes
-});
-
-const { text } = await generateText({
-  model: claudeLong('opus'),
-  prompt: 'Analyze this complex problem in detail...',
-});
+try {
+  const { text } = await generateText({
+    model: claudeCode('opus'),
+    prompt: 'Analyze this complex problem in detail...',
+    abortSignal: controller.signal,
+  });
+  
+  clearTimeout(timeoutId);
+  console.log(text);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('Request was cancelled');
+  }
+}
 ```
 
 
@@ -214,42 +225,36 @@ const { text: response } = await generateText({
 
 ## Detailed Configuration
 
-### Timeout Configuration
+### AbortSignal Support
 
-The provider includes configurable timeouts to handle Claude Opus 4's extended thinking capabilities:
+The provider fully supports the standard AbortSignal for request cancellation, following Vercel AI SDK patterns:
 
 ```typescript
-import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-// Default: 2-minute timeout for most use cases
-const claude = createClaudeCode();
+// Using AbortController for cancellation
+const controller = new AbortController();
 
-// Custom timeout at provider level
-const claude5min = createClaudeCode({
-  timeoutMs: 300000, // 5 minutes for complex tasks
+// Cancel after user action
+button.addEventListener('click', () => {
+  controller.abort();
 });
 
-// Per-model timeout override
 const { text } = await generateText({
-  model: claude5min('opus', { timeoutMs: 600000 }), // Override to 10 minutes
-  prompt: 'Analyze this complex dataset...',
+  model: claudeCode('opus'),
+  prompt: 'Write a story...',
+  abortSignal: controller.signal,
 });
 ```
 
-**Timeout Guidelines:**
-- **Default (2 minutes)**: Good for most queries including Opus 4's quick responses
-- **5-10 minutes**: Recommended for complex reasoning tasks with Opus 4's extended thinking
-- **Maximum (10 minutes)**: Matches Anthropic's API timeout limit
-- **Minimum (1 second)**: For testing or very fast responses
-
-**Important**: For tasks expected to take longer than 10 minutes, consider breaking them into smaller chunks or using streaming approaches.
+**For Long-Running Tasks**: Claude Opus 4's extended thinking may require longer timeouts than typical HTTP requests. See the "Handling Long-Running Tasks" section above for implementing custom timeouts using AbortSignal.
 
 ### Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `model` | `'opus' \| 'sonnet'` | `'opus'` | Model to use |
-| `timeoutMs` | `number` | `120000` | Timeout in milliseconds (1-600 seconds) |
 | `pathToClaudeCodeExecutable` | `string` | `'claude'` | Path to Claude CLI executable |
 | `customSystemPrompt` | `string` | `undefined` | Custom system prompt |
 | `appendSystemPrompt` | `string` | `undefined` | Append to system prompt |
