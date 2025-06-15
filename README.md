@@ -766,10 +766,18 @@ Review our examples for implementation patterns
 
 ## Limitations
 
-- **No image support**: The Claude Code CLI doesn't support image inputs
+- **No image support**: The Claude Code CLI doesn't support image inputs (provider sets `supportsImageUrls = false`)
+- **No embedding support**: Text embeddings are not available through this provider
 - **Object-tool mode not supported**: Only `object-json` mode works via `generateObject`/`streamObject`
 - **Text-only responses**: No support for file generation or other modalities
 - **Session management**: While sessions are supported, message history is the recommended approach
+- **Unsupported generation settings**: The following AI SDK settings are ignored and will generate warnings:
+  - `temperature` - Claude Code CLI doesn't expose temperature control
+  - `maxTokens` - Token limits aren't configurable via CLI
+  - `topP`, `topK` - Sampling parameters aren't available
+  - `presencePenalty`, `frequencyPenalty` - Penalty parameters aren't supported
+  - `stopSequences` - Custom stop sequences aren't available
+  - `seed` - Deterministic generation isn't supported
 
 ## Error Handling
 
