@@ -1,3 +1,220 @@
+# Community Provider Status Analysis
+
+## Overview
+This document analyzes the requirements for ai-sdk-provider-claude-code to achieve community provider status in the Vercel AI SDK ecosystem.
+
+## Key Findings from AI SDK Repository Analysis
+
+### 1. Community Provider Submission Process
+Based on the documentation in `/content/providers/03-community-providers/01-custom-providers.mdx`:
+- Open-source providers can be promoted to community provider status
+- Process: Submit a PR to add the provider to the Community Providers section
+- Documentation location: `/content/providers/03-community-providers/`
+
+### 2. Required Provider Structure
+
+#### Package.json Requirements
+Based on official providers (e.g., Mistral):
+- ✅ **name**: Should follow pattern (we have: `ai-sdk-provider-claude-code`)
+- ✅ **version**: Semantic versioning (we have: `0.0.1`)
+- ✅ **license**: Apache-2.0 or MIT (we have: `MIT`)
+- ✅ **sideEffects**: false (we have this)
+- ✅ **main/module/types**: Export configuration (we have partial - missing `module`)
+- ✅ **files**: Distribution files (we have this)
+- ✅ **scripts**: Build, test, lint commands (we have these)
+- ✅ **exports**: Package exports (we have this)
+- ✅ **dependencies**: AI SDK dependencies (we have correct versions)
+- ✅ **engines**: Node >=18 (we have this)
+- ✅ **publishConfig**: Public access (we have this)
+- ✅ **homepage**: Documentation URL (we have GitHub repo)
+- ✅ **repository**: Git repository info (we have this)
+- ❌ **bugs**: Issue tracker URL (we're missing this)
+- ✅ **keywords**: Relevant keywords (we have these)
+
+#### Build System
+Official providers use:
+- ❌ **tsup**: For building (we use plain `tsc`)
+- ❌ **Dual format**: Both CJS and ESM (we only have ESM)
+- ❌ **Source maps**: For debugging (we don't generate these)
+- ✅ **TypeScript**: With proper configuration (we have this)
+
+#### Testing Requirements
+- ✅ **Unit tests**: With Vitest (we have this)
+- ❌ **Edge runtime tests**: Separate edge config (we're missing this)
+- ❌ **Node runtime tests**: Separate node config (we're missing this)
+- ✅ **Integration tests**: End-to-end testing (we have this)
+
+#### Documentation Requirements
+- ✅ **README.md**: Comprehensive documentation (we have this)
+- ❌ **CHANGELOG.md**: Version history (we're missing this)
+- ✅ **LICENSE**: License file (we have MIT)
+- ✅ **Examples**: Usage examples (we have extensive examples)
+
+### 3. Code Structure Requirements
+
+#### Provider Pattern (from documentation)
+- ✅ Factory function that returns provider instance
+- ✅ Default provider instance export
+- ✅ Provider settings interface
+- ✅ Explicit method for model creation (e.g., `.chat()`)
+- ✅ Proper error handling for `new` keyword misuse
+
+#### Language Model Implementation
+- ✅ `specificationVersion: 'v1'`
+- ✅ `provider` string identifier
+- ✅ `modelId` unique identifier
+- ✅ `defaultObjectGenerationMode` (we have 'json')
+- ✅ `doGenerate` method implementation
+- ✅ `doStream` method implementation
+
+#### Error Handling
+- ✅ Use of standardized AI SDK errors
+- ✅ Proper `isRetryable` flags
+- ✅ AbortSignal support
+- ✅ No internal retry/timeout implementation
+
+### 4. Community Provider Documentation Format
+
+Based on existing community providers, documentation should include:
+- ✅ Provider name and description
+- ✅ GitHub repository link
+- ✅ Installation instructions (npm/pnpm/yarn)
+- ✅ Setup/configuration steps
+- ✅ Provider instance usage
+- ✅ Language model capabilities
+- ✅ Code examples
+- ❓ Model list/capabilities table
+- ❓ Special features or limitations
+
+## Current Status Summary
+
+### ✅ What We Have
+1. Fully functional AI SDK provider implementation
+2. Comprehensive documentation and examples
+3. Proper provider factory pattern
+4. Language Model V1 specification compliance
+5. Unit and integration tests
+6. TypeScript support
+7. Extensive examples directory
+8. Clear setup instructions
+9. MIT license
+10. Public GitHub repository
+
+### ❌ What We're Missing
+1. **Build System**:
+   - tsup configuration for dual CJS/ESM builds
+   - Source map generation
+   - Separate edge/node test configurations
+
+2. **Documentation**:
+   - CHANGELOG.md file
+   - Bugs URL in package.json
+
+3. **Testing**:
+   - Separate edge runtime tests
+   - Separate node runtime tests
+
+4. **Package.json**:
+   - `module` field for ESM entry point
+   - `bugs` field with issue tracker URL
+
+## Recommended Next Steps
+
+1. **Priority 1 - Build System** (Required for npm publishing):
+   - Add tsup configuration for dual format builds
+   - Configure source map generation
+   - Add module field to package.json
+
+2. **Priority 2 - Testing** (Required for robustness):
+   - Create separate vitest configs for edge and node
+   - Add corresponding test scripts
+
+3. **Priority 3 - Documentation** (Required for community):
+   - Create CHANGELOG.md
+   - Add bugs field to package.json
+
+4. **Priority 4 - Community Submission**:
+   - Prepare MDX documentation file
+   - Submit PR to AI SDK repository
+   - Add provider to community providers list
+
+## Example Community Provider MDX
+
+```mdx
+---
+title: Claude Code
+description: Use Claude via Claude Code CLI with your Pro/Max subscription
+---
+
+# Claude Code Provider
+
+[ben-vargas/ai-sdk-provider-claude-code](https://github.com/ben-vargas/ai-sdk-provider-claude-code) is a community provider that uses the [Claude Code CLI](https://github.com/anthropic-ai/claude-code) to provide language model support for the AI SDK.
+
+## Setup
+
+The Claude Code provider is available in the `ai-sdk-provider-claude-code` module. You can install it with:
+
+<Tabs items={['pnpm', 'npm', 'yarn']}>
+  <Tab>
+    <Snippet text="pnpm add ai-sdk-provider-claude-code" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install ai-sdk-provider-claude-code" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add ai-sdk-provider-claude-code" dark />
+  </Tab>
+</Tabs>
+
+### Prerequisites
+
+Install and authenticate the Claude Code CLI:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude login
+```
+
+## Provider Instance
+
+You can import the default provider instance `claudeCode` from `ai-sdk-provider-claude-code`:
+
+```ts
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+```
+
+## Language Models
+
+The Claude Code provider supports the following models:
+
+- `sonnet` - Claude 3 Sonnet (balanced speed and capability)
+- `opus` - Claude 3 Opus (most capable, use with longer timeouts)
+
+```ts
+import { generateText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+
+const { text } = await generateText({
+  model: claudeCode('sonnet'),
+  prompt: 'Explain recursion in one sentence',
+});
+```
+
+### Model Capabilities
+
+- Text generation (streaming and non-streaming)
+- Object generation with JSON schemas
+- Multi-turn conversations with session management
+- Tool calling support
+- Custom timeout configuration (1s to 10 minutes)
+
+<Note>
+  Image inputs are not supported due to Claude Code CLI limitations.
+</Note>
+```
+
+---
+
 # Claude Code AI SDK Provider - Project Status
 
 ## ✅ What's Working

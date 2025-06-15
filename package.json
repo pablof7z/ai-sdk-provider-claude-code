@@ -15,15 +15,22 @@
         "type": "git",
         "url": "git+https://github.com/ben-vargas/ai-sdk-provider-claude-code.git"
     },
+    "bugs": {
+        "url": "https://github.com/ben-vargas/ai-sdk-provider-claude-code/issues"
+    },
     "license": "MIT",
     "author": "Ben Vargas",
     "type": "module",
     "sideEffects": false,
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "exports": {
         "./package.json": "./package.json",
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.js"
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
         }
     },
     "files": [
@@ -32,14 +39,16 @@
         "LICENSE"
     ],
     "scripts": {
-        "build": "tsc",
+        "build": "tsup",
         "clean": "rm -rf dist",
-        "dev": "tsc --watch",
+        "dev": "tsup --watch",
         "lint": "eslint src",
         "prepare": "npm run build",
         "prepublishOnly": "npm run clean && npm run build",
-        "test": "vitest run",
-        "test:watch": "vitest",
+        "test": "npm run test:node && npm run test:edge",
+        "test:edge": "vitest --config vitest.edge.config.js --run",
+        "test:node": "vitest --config vitest.node.config.js --run",
+        "test:node:watch": "vitest --config vitest.node.config.js --watch",
         "test:integration": "npm run build && npx tsx examples/integration-test.ts",
         "typecheck": "tsc --noEmit",
         "example:basic": "npm run build && npx tsx examples/basic-usage.ts",
@@ -59,6 +68,7 @@
         "@anthropic-ai/claude-code": "^1.0.24"
     },
     "devDependencies": {
+        "@edge-runtime/vm": "^5.0.0",
         "@eslint/js": "^9.28.0",
         "@types/node": "20.17.24",
         "@typescript-eslint/eslint-plugin": "^8.34.0",
@@ -66,6 +76,7 @@
         "ai": "^4.3.16",
         "eslint": "^9.28.0",
         "globals": "^16.2.0",
+        "tsup": "^8.5.0",
         "typescript": "5.6.3",
         "vitest": "^3.2.3",
         "zod": "^3.24.1"

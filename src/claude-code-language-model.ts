@@ -1,24 +1,20 @@
 import type {
   LanguageModelV1,
-  LanguageModelV1CallOptions,
   LanguageModelV1CallWarning,
   LanguageModelV1FinishReason,
   LanguageModelV1StreamPart,
 } from '@ai-sdk/provider';
-import { NoSuchModelError } from '@ai-sdk/provider';
-import { z } from 'zod';
 import type { ClaudeCodeSettings } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
-import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
 
-import { query, AbortError, type Options, type SDKMessage } from '@anthropic-ai/claude-code';
+import { query, AbortError, type Options } from '@anthropic-ai/claude-code';
 
 export interface ClaudeCodeLanguageModelOptions {
   id: ClaudeCodeModelId;
   settings?: ClaudeCodeSettings;
 }
 
-export type ClaudeCodeModelId = 'opus' | 'sonnet';
+export type ClaudeCodeModelId = 'opus' | 'sonnet' | (string & {});
 
 const modelMap: Record<string, string> = {
   'opus': 'opus',
@@ -49,17 +45,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   }
 
   async doGenerate(
-    options: LanguageModelV1CallOptions,
-  ): Promise<{
-    text: string;
-    usage: {
-      promptTokens: number;
-      completionTokens: number;
-    };
-    finishReason: LanguageModelV1FinishReason;
-    rawCall: { rawPrompt: unknown; rawSettings: Record<string, unknown> };
-    warnings?: LanguageModelV1CallWarning[];
-  }> {
+    options: Parameters<LanguageModelV1['doGenerate']>[0],
+  ): Promise<Awaited<ReturnType<LanguageModelV1['doGenerate']>>> {
     const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt);
 
     const abortController = new AbortController();
@@ -90,6 +77,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     let text = '';
     let usage = { promptTokens: 0, completionTokens: 0 };
     let finishReason: LanguageModelV1FinishReason = 'stop';
+    let costUsd: number | undefined;
+    let durationMs: number | undefined;
+    let rawUsage: any | undefined;
     const warnings: LanguageModelV1CallWarning[] = [];
 
     try {
@@ -105,8 +95,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           ).join('');
         } else if (message.type === 'result') {
           this.sessionId = message.session_id;
+          costUsd = message.total_cost_usd;
+          durationMs = message.duration_ms;
           
           if ('usage' in message) {
+            rawUsage = message.usage;
             usage = {
               promptTokens: (message.usage.cache_creation_input_tokens ?? 0) + 
                            (message.usage.cache_read_input_tokens ?? 0) +
@@ -132,7 +125,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     }
 
     return {
-      text,
+      text: text || undefined,
       usage,
       finishReason,
       rawCall: {
@@ -140,16 +133,20 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         rawSettings: queryOptions,
       },
       warnings: warnings.length > 0 ? warnings : undefined,
+      providerMetadata: {
+        'claude-code': {
+          ...(this.sessionId !== undefined && { sessionId: this.sessionId }),
+          ...(costUsd !== undefined && { costUsd }),
+          ...(durationMs !== undefined && { durationMs }),
+          ...(rawUsage !== undefined && { rawUsage }),
+        },
+      },
     };
   }
 
   async doStream(
-    options: LanguageModelV1CallOptions,
-  ): Promise<{
-    stream: ReadableStream<LanguageModelV1StreamPart>;
-    rawCall: { rawPrompt: unknown; rawSettings: Record<string, unknown> };
-    warnings?: LanguageModelV1CallWarning[];
-  }> {
+    options: Parameters<LanguageModelV1['doStream']>[0],
+  ): Promise<Awaited<ReturnType<LanguageModelV1['doStream']>>> {
     const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt);
 
     const abortController = new AbortController();
@@ -180,7 +177,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     const warnings: LanguageModelV1CallWarning[] = [];
 
     const stream = new ReadableStream<LanguageModelV1StreamPart>({
-      async start(controller) {
+      start: async (controller) => {
         try {
           const response = query({
             prompt: messagesPrompt,
@@ -202,7 +199,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 });
               }
             } else if (message.type === 'result') {
+              let rawUsage: any | undefined;
               if ('usage' in message) {
+                rawUsage = message.usage;
                 usage = {
                   promptTokens: (message.usage.cache_creation_input_tokens ?? 0) + 
                                (message.usage.cache_read_input_tokens ?? 0) +
@@ -218,6 +217,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 finishReason = 'error';
               }
 
+              // Store session ID in the model instance
+              this.sessionId = message.session_id;
+              
               controller.enqueue({
                 type: 'finish',
                 finishReason,
@@ -225,14 +227,15 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 providerMetadata: {
                   'claude-code': {
                     sessionId: message.session_id,
-                    costUsd: message.total_cost_usd,
-                    durationMs: message.duration_ms,
+                    ...(message.total_cost_usd !== undefined && { costUsd: message.total_cost_usd }),
+                    ...(message.duration_ms !== undefined && { durationMs: message.duration_ms }),
+                    ...(rawUsage !== undefined && { rawUsage }),
                   },
                 },
               });
             } else if (message.type === 'system' && message.subtype === 'init') {
               // Store session ID for future use
-              (controller as any).sessionId = message.session_id;
+              this.sessionId = message.session_id;
             }
           }
 
