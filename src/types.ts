@@ -1,12 +1,6 @@
 // Provider settings
 export interface ClaudeCodeSettings {
   /**
-   * Model to use ('opus' or 'sonnet')
-   * @default 'opus'
-   */
-  model?: 'opus' | 'sonnet';
-
-  /**
    * Custom path to Claude Code CLI executable
    * @default 'claude' (uses system PATH)
    */
@@ -94,4 +88,9 @@ export interface ClaudeCodeSettings {
     url: string;
     headers?: Record<string, string>;
   }>;
+
+  /**
+   * Enable verbose logging for debugging
+   */
+  verbose?: boolean;
 }

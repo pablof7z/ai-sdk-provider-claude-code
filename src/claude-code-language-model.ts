@@ -4,9 +4,12 @@ import type {
   LanguageModelV1FinishReason,
   LanguageModelV1StreamPart,
 } from '@ai-sdk/provider';
+import { NoSuchModelError } from '@ai-sdk/provider';
+import { generateId } from '@ai-sdk/provider-utils';
 import type { ClaudeCodeSettings } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
 import { extractJson } from './extract-json.js';
+import { createAPICallError, createAuthenticationError } from './errors.js';
 
 import { query, AbortError, type Options } from '@anthropic-ai/claude-code';
 
@@ -25,6 +28,8 @@ const modelMap: Record<string, string> = {
 export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   readonly specificationVersion = 'v1' as const;
   readonly defaultObjectGenerationMode = 'json' as const;
+  readonly supportsImageUrls = false;
+  readonly supportsStructuredOutputs = false;
 
   readonly modelId: ClaudeCodeModelId;
   readonly settings: ClaudeCodeSettings;
@@ -34,6 +39,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   constructor(options: ClaudeCodeLanguageModelOptions) {
     this.modelId = options.id;
     this.settings = options.settings ?? {};
+    
+    // Validate model ID format
+    if (!this.modelId || typeof this.modelId !== 'string' || this.modelId.trim() === '') {
+      throw new NoSuchModelError({
+        modelId: this.modelId,
+        modelType: 'languageModel',
+      });
+    }
   }
 
   get provider(): string {
@@ -43,6 +56,36 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   private getModel(): string {
     const mapped = modelMap[this.modelId];
     return mapped ?? this.modelId;
+  }
+
+  private generateUnsupportedWarnings(
+    options: Parameters<LanguageModelV1['doGenerate']>[0] | Parameters<LanguageModelV1['doStream']>[0]
+  ): LanguageModelV1CallWarning[] {
+    const warnings: LanguageModelV1CallWarning[] = [];
+    const unsupportedParams: string[] = [];
+    
+    // Check for unsupported parameters
+    if (options.temperature !== undefined) unsupportedParams.push('temperature');
+    if (options.maxTokens !== undefined) unsupportedParams.push('maxTokens');
+    if (options.topP !== undefined) unsupportedParams.push('topP');
+    if (options.topK !== undefined) unsupportedParams.push('topK');
+    if (options.presencePenalty !== undefined) unsupportedParams.push('presencePenalty');
+    if (options.frequencyPenalty !== undefined) unsupportedParams.push('frequencyPenalty');
+    if (options.stopSequences !== undefined && options.stopSequences.length > 0) unsupportedParams.push('stopSequences');
+    if (options.seed !== undefined) unsupportedParams.push('seed');
+    
+    if (unsupportedParams.length > 0) {
+      // Add a warning for each unsupported parameter
+      for (const param of unsupportedParams) {
+        warnings.push({
+          type: 'unsupported-setting',
+          setting: param as 'temperature' | 'maxTokens' | 'topP' | 'topK' | 'presencePenalty' | 'frequencyPenalty' | 'stopSequences' | 'seed',
+          details: `Claude Code CLI does not support the ${param} parameter. It will be ignored.`,
+        });
+      }
+    }
+    
+    return warnings;
   }
 
   async doGenerate(
@@ -81,7 +124,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     let costUsd: number | undefined;
     let durationMs: number | undefined;
     let rawUsage: any | undefined;
-    const warnings: LanguageModelV1CallWarning[] = [];
+    const warnings: LanguageModelV1CallWarning[] = this.generateUnsupportedWarnings(options);
 
     try {
       const response = query({
@@ -122,7 +165,23 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       if (error instanceof AbortError) {
         throw options.abortSignal?.aborted ? options.abortSignal.reason : error;
       }
-      throw error;
+      
+      // Check for authentication errors
+      if (error.message?.includes('not logged in') || error.message?.includes('authentication') || error.exitCode === 401) {
+        throw createAuthenticationError({
+          message: error.message || 'Authentication failed. Please ensure Claude Code CLI is properly authenticated.',
+        });
+      }
+      
+      // Wrap other errors with API call error
+      throw createAPICallError({
+        message: error.message || 'Claude Code CLI error',
+        code: error.code,
+        exitCode: error.exitCode,
+        stderr: error.stderr,
+        promptExcerpt: messagesPrompt.substring(0, 200),
+        isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED',
+      });
     }
 
     // Extract JSON if in object-json mode
@@ -139,6 +198,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         rawSettings: queryOptions,
       },
       warnings: warnings.length > 0 ? warnings : undefined,
+      response: {
+        id: generateId(),
+        timestamp: new Date(),
+        modelId: this.modelId,
+      },
+      request: {
+        body: messagesPrompt,
+      },
       providerMetadata: {
         'claude-code': {
           ...(this.sessionId !== undefined && { sessionId: this.sessionId }),
@@ -180,7 +247,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       mcpServers: this.settings.mcpServers as any, // SDK has specific type for this
     };
 
-    const warnings: LanguageModelV1CallWarning[] = [];
+    const warnings: LanguageModelV1CallWarning[] = this.generateUnsupportedWarnings(options);
 
     const stream = new ReadableStream<LanguageModelV1StreamPart>({
       start: async (controller) => {
@@ -258,16 +325,45 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
             } else if (message.type === 'system' && message.subtype === 'init') {
               // Store session ID for future use
               this.sessionId = message.session_id;
+              
+              // Emit response metadata when session is initialized
+              controller.enqueue({
+                type: 'response-metadata',
+                id: message.session_id,
+                timestamp: new Date(),
+                modelId: this.modelId,
+              });
             }
           }
 
           controller.close();
         } catch (error: any) {
+          let errorToEmit: unknown;
+          
           if (error instanceof AbortError) {
-            controller.error(options.abortSignal?.aborted ? options.abortSignal.reason : error);
+            errorToEmit = options.abortSignal?.aborted ? options.abortSignal.reason : error;
+          } else if (error.message?.includes('not logged in') || error.message?.includes('authentication') || error.exitCode === 401) {
+            errorToEmit = createAuthenticationError({
+              message: error.message || 'Authentication failed. Please ensure Claude Code CLI is properly authenticated.',
+            });
           } else {
-            controller.error(error);
+            errorToEmit = createAPICallError({
+              message: error.message || 'Claude Code CLI error',
+              code: error.code,
+              exitCode: error.exitCode,
+              stderr: error.stderr,
+              promptExcerpt: messagesPrompt.substring(0, 200),
+              isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED',
+            });
           }
+          
+          // Emit error as a stream part
+          controller.enqueue({
+            type: 'error',
+            error: errorToEmit,
+          });
+          
+          controller.close();
         }
       },
     });
@@ -279,6 +375,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         rawSettings: queryOptions,
       },
       warnings: warnings.length > 0 ? warnings : undefined,
+      request: {
+        body: messagesPrompt,
+      },
     };
   }
 }
