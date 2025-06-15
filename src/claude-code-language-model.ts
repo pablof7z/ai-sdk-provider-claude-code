@@ -6,6 +6,7 @@ import type {
 } from '@ai-sdk/provider';
 import type { ClaudeCodeSettings } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
+import { extractJson } from './extract-json.js';
 
 import { query, AbortError, type Options } from '@anthropic-ai/claude-code';
 
@@ -47,7 +48,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   async doGenerate(
     options: Parameters<LanguageModelV1['doGenerate']>[0],
   ): Promise<Awaited<ReturnType<LanguageModelV1['doGenerate']>>> {
-    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt);
+    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
     if (options.abortSignal) {
@@ -124,6 +125,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       throw error;
     }
 
+    // Extract JSON if in object-json mode
+    if (options.mode?.type === 'object-json' && text) {
+      text = extractJson(text);
+    }
+
     return {
       text: text || undefined,
       usage,
@@ -147,7 +153,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   async doStream(
     options: Parameters<LanguageModelV1['doStream']>[0],
   ): Promise<Awaited<ReturnType<LanguageModelV1['doStream']>>> {
-    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt);
+    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
     if (options.abortSignal) {
@@ -185,6 +191,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           });
 
           let usage = { promptTokens: 0, completionTokens: 0 };
+          let accumulatedText = '';
 
           for await (const message of response) {
             if (message.type === 'assistant') {
@@ -193,10 +200,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 .join('');
               
               if (text) {
-                controller.enqueue({
-                  type: 'text-delta',
-                  textDelta: text,
-                });
+                accumulatedText += text;
+                
+                // In object-json mode, we need to accumulate the full text
+                // and extract JSON at the end, so don't stream individual deltas
+                if (options.mode?.type !== 'object-json') {
+                  controller.enqueue({
+                    type: 'text-delta',
+                    textDelta: text,
+                  });
+                }
               }
             } else if (message.type === 'result') {
               let rawUsage: any | undefined;
@@ -219,6 +232,15 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
 
               // Store session ID in the model instance
               this.sessionId = message.session_id;
+              
+              // In object-json mode, extract JSON and send the full text at once
+              if (options.mode?.type === 'object-json' && accumulatedText) {
+                const extractedJson = extractJson(accumulatedText);
+                controller.enqueue({
+                  type: 'text-delta',
+                  textDelta: extractedJson,
+                });
+              }
               
               controller.enqueue({
                 type: 'finish',

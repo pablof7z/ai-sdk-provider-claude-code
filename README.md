@@ -79,7 +79,7 @@ npx tsx examples/basic-usage.ts
 ## Known Alpha Limitations
 
 - Requires Node.js ≥ 18 and local Claude Code CLI installation
-- Limited to text generation (no image support due to CLI limitation)  
+- No image support (CLI limitation)  
 - Some code structure improvements needed (AI-generated, welcoming refactoring!)
 
 > **Cost Note**: For Pro/Max subscribers, usage is covered by subscription. API key users are charged per token.
@@ -579,10 +579,9 @@ console.log(analysis);
 
 **How it works**: The provider appends JSON generation instructions to your prompt and extracts valid JSON from Claude's response. While not as robust as native JSON mode, it works well for most use cases.
 
-**Important limitations**:
-- **No real-time streaming for objects**: Since we rely on prompt engineering rather than native JSON support, `streamObject` must wait for the complete response before parsing the JSON. This means `streamObject` and `generateObject` behave identically for object generation - both wait for the full response.
-- **Object-tool mode not supported**: Only `object-json` mode (via `generateObject`/`streamObject`) is available.
-- **Regular text streaming works**: Only standard text generation truly benefits from streaming. Object generation always requires the complete response.
+**Important notes**:
+- **Object mode support**: Only `object-json` mode is supported (via `generateObject`/`streamObject`). The provider uses prompt engineering and JSON extraction to ensure reliable object generation.
+- **Streaming behavior**: While `streamObject` is supported, it accumulates the full response before extracting JSON to ensure validity. Regular text streaming works in real-time.
 
 ## Object Generation Cookbook
 
@@ -860,6 +859,13 @@ ai-sdk-provider-claude-code/
 ├── tsconfig.json
 └── LICENSE
 ```
+
+## Known Limitations
+
+1. **No image support**: The CLI doesn't accept image inputs
+2. **Authentication required**: Requires separate Claude Code CLI authentication (`claude login`)
+3. **Session IDs change**: Each request gets a new session ID, even when using `--resume` 
+5. **No tool calling**: Function/tool calling is not supported by the CLI
 
 ## Contributing
 

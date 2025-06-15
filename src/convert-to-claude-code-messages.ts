@@ -1,6 +1,9 @@
 import type { LanguageModelV1Prompt } from '@ai-sdk/provider';
 
-export function convertToClaudeCodeMessages(prompt: LanguageModelV1Prompt): {
+export function convertToClaudeCodeMessages(
+  prompt: LanguageModelV1Prompt,
+  mode?: { type: 'regular' | 'object-json' | 'object-tool' }
+): {
   messagesPrompt: string;
   systemPrompt?: string;
 } {
@@ -67,16 +70,19 @@ export function convertToClaudeCodeMessages(prompt: LanguageModelV1Prompt): {
   // For the SDK, we need to provide a single prompt string
   // Format the conversation history properly
   
+  // Combine system prompt with messages
+  let finalPrompt = '';
+  
+  // Add system prompt at the beginning if present
+  if (systemPrompt) {
+    finalPrompt = systemPrompt;
+  }
+  
   if (messages.length === 0) {
-    return { messagesPrompt: '', systemPrompt };
+    return { messagesPrompt: finalPrompt, systemPrompt };
   }
   
-  // If there's only one message, return it directly
-  if (messages.length === 1) {
-    return { messagesPrompt: messages[0], systemPrompt };
-  }
-  
-  // For multiple messages, format as conversation
+  // Format messages
   const formattedMessages = [];
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -89,8 +95,32 @@ export function convertToClaudeCodeMessages(prompt: LanguageModelV1Prompt): {
     }
   }
   
+  // Combine system prompt with messages
+  if (finalPrompt) {
+    finalPrompt = finalPrompt + '\n\n' + formattedMessages.join('\n\n');
+  } else {
+    finalPrompt = formattedMessages.join('\n\n');
+  }
+  
+  // For JSON mode, add explicit instruction to ensure JSON output
+  if (mode?.type === 'object-json') {
+    // Make the JSON instruction even more explicit
+    finalPrompt = `${finalPrompt}
+
+CRITICAL INSTRUCTION: You MUST respond with ONLY valid JSON. Follow these rules EXACTLY:
+1. Start your response with an opening brace {
+2. End your response with a closing brace }
+3. Do NOT include any text before the opening brace
+4. Do NOT include any text after the closing brace
+5. Do NOT use markdown code blocks or backticks
+6. Do NOT include explanations or commentary
+7. The ENTIRE response must be valid JSON that can be parsed with JSON.parse()
+
+Begin your response with { and end with }`;
+  }
+  
   return {
-    messagesPrompt: formattedMessages.join('\n\n'),
+    messagesPrompt: finalPrompt,
     systemPrompt,
   };
 }
