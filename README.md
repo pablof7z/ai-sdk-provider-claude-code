@@ -73,8 +73,8 @@ npx tsx examples/basic-usage.ts
 
 ## Model Support
 
-- **`opus`** - Claude 3 Opus (most capable, use with longer timeouts for complex reasoning)
-- **`sonnet`** - Claude 3 Sonnet (balanced speed and capability)
+- **`opus`** - Claude 4 Opus (most capable, use with longer timeouts for complex reasoning)
+- **`sonnet`** - Claude 4 Sonnet (balanced speed and capability)
 
 ## Known Alpha Limitations
 
