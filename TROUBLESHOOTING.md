@@ -1,41 +1,40 @@
 # Troubleshooting Guide
 
-This guide documents common issues and solutions discovered during the development of the Claude Code AI SDK Provider.
+This guide documents common issues and solutions for the Claude Code AI SDK Provider.
 
 ## Common Issues
 
-### 1. Claude CLI Hanging Issues (RESOLVED)
+### 1. Authentication Errors
 
-**Problem**: The Claude CLI hangs indefinitely when spawned as a child process using Node.js `spawn` or `execFile`.
+**Problem**: Getting authentication errors when trying to use the provider.
 
-**Root Cause**: The issue was using command line arguments instead of stdin for prompt input. Claude CLI expects prompts via stdin when using the `-p` flag.
+**Solution**: 
+```bash
+# Install Claude Code CLI globally
+npm install -g @anthropic-ai/claude-code
 
-**Solution**: ✅ **FIXED** in current implementation:
-- Use `spawn` with `-p` flag and write prompt to `child.stdin`
-- Properly close stdin after writing: `child.stdin.write(prompt); child.stdin.end()`
-- This eliminates the need for `execSync` or `node-pty` workarounds
+# Authenticate with your Claude account
+claude login
+```
 
-### 2. Streaming Requires `--verbose` Flag
+**Verification**:
+```bash
+# Check if authenticated
+npx tsx examples/check-cli.ts
+```
 
-**Problem**: Getting error: "When using --print, --output-format=stream-json requires --verbose"
+### 2. SDK Not Found
 
-**Root Cause**: This is a Claude CLI requirement, not a limitation of our implementation.
+**Problem**: Error about `@anthropic-ai/claude-code` module not found.
 
-**Solution**: ✅ **IMPLEMENTED** - Always include `--verbose` when using `--output-format stream-json`.
+**Solution**: The SDK is a dependency of this provider and should be installed automatically. If not:
+```bash
+npm install @anthropic-ai/claude-code
+```
 
-### 3. Session IDs Change Even When Resuming
-
-**Problem**: Claude CLI returns a new session ID for each interaction, even when using `--resume`.
-
-**Expected Behavior**: This is normal Claude CLI behavior. The context is maintained correctly despite new session IDs.
-
-**Solution**: Continue using the `--resume` flag with the original session ID. The conversation context will be preserved.
-
-### 4. Handling Long-Running Tasks
+### 3. Handling Long-Running Tasks
 
 **Problem**: Complex queries with Claude Opus 4 may take longer due to extended thinking mode.
-
-**Root Cause**: Claude Opus 4 can engage in deep reasoning that requires more processing time.
 
 **Solution**: Use AbortSignal with custom timeouts:
 
@@ -43,11 +42,11 @@ This guide documents common issues and solutions discovered during the developme
 import { generateText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 
-// Create a custom timeout
+// Create a custom timeout (5 minutes for complex tasks)
 const controller = new AbortController();
 const timeoutId = setTimeout(() => {
   controller.abort(new Error('Request timeout'));
-}, 300000); // 5 minutes
+}, 300000);
 
 try {
   const { text } = await generateText({
@@ -64,153 +63,176 @@ try {
 ```
 
 **Guidelines**:
-- Simple queries: 1-2 minutes usually sufficient
+- Simple queries: Default timeout is sufficient
 - Complex reasoning: 5-10 minutes may be needed
 - Very long tasks: Consider breaking into smaller chunks
 
-### 5. Error Handling with Standard AI SDK Errors
-
-**Problem**: Need to handle different types of errors appropriately.
-
-**Solution**: The provider now uses standard AI SDK error classes:
-
-```typescript
-import { APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
-import { isAuthenticationError, isTimeoutError, getErrorMetadata } from 'ai-sdk-provider-claude-code';
-
-try {
-  // Your code here
-} catch (error) {
-  if (isAuthenticationError(error)) {
-    // Handle authentication error - user needs to run 'claude login'
-  } else if (error.name === 'AbortError') {
-    // Handle abort/timeout - consider retrying with longer timeout
-  } else if (error instanceof APICallError) {
-    // Check if retryable
-    if (error.isRetryable) {
-      // Implement retry logic
-    }
-    // Get CLI-specific metadata
-    const metadata = getErrorMetadata(error);
-    console.log('Exit code:', metadata?.exitCode);
-  }
-}
-```
-
-**Error Types**:
-- **`LoadAPIKeyError`**: Authentication failures (exit code 401)
-- **`APICallError`**: All other CLI failures
-  - Timeouts have `isRetryable: true`
-  - Other errors have `isRetryable: false`
-  - Contains metadata accessible via `getErrorMetadata()`
-
-## Debugging Commands
-
-### Check CLI Installation
-```bash
-claude --version
-```
-
-### Test Basic CLI Functionality
-```bash
-claude -p "Hello" --print --output-format json
-```
-
-### Test Streaming Output
-```bash
-claude -p "Count to 5" --verbose --output-format stream-json
-```
-
-### Test Session Resumption
-```bash
-# First command
-claude -p "My name is Alice" --print --output-format json
-# Note the session_id from the response
-
-# Resume session
-claude --resume <session_id> -p "What is my name?" --print --output-format json
-```
-
-### Test Long-Running Tasks
-```bash
-# Run the long-running tasks example
-npx tsx examples/long-running-tasks.ts
-
-# Or test execution time manually with Claude CLI
-time claude -p "Explain quantum computing in detail" --print --output-format json
-```
-
-## Implementation Decisions
-
-### Why Unified Spawn Architecture?
-After fixing the stdin communication issue, `spawn` became the optimal solution:
-- ✅ Works consistently across all environments
-- ✅ Supports both streaming and non-streaming modes
-- ✅ Zero-latency streaming with readline interface
-- ✅ No external dependencies required
-- ✅ Proper process lifecycle management
-- ✅ Concurrent request handling with process pooling
-
-### Why Readline Interface?
-Using Node.js `readline.createInterface()` for parsing CLI output:
-- ✅ Event-driven processing eliminates polling delays
-- ✅ Immediate response as soon as data arrives
-- ✅ Built into Node.js core - no external dependencies
-- ✅ Handles line-buffered JSON output correctly
-- ✅ Proper async iteration with `for await (const line of rl)`
-
-### Architectural Benefits
-The unified approach provides:
-- **Performance**: Zero-latency streaming matches AI SDK ecosystem standards
-- **Reliability**: Single code path reduces complexity and edge cases
-- **Compatibility**: Works in all Node.js environments without optional dependencies
-- **Maintainability**: One implementation to test and maintain
-
-## Object Generation Troubleshooting
-
-### 1. Invalid JSON Response
+### 4. Object Generation Issues
 
 **Problem**: Claude returns text instead of valid JSON when using `generateObject`.
 
 **Solutions**:
-- Simplify your schema - start with fewer fields
-- Make your prompt more explicit: "Generate only valid JSON"
-- Use descriptive field names and add `.describe()` to schema fields
-- Implement retry logic for production use
+1. **Simplify your schema** - Start with fewer fields
+2. **Clear prompts** - Be explicit: "Generate a user profile with name and age"
+3. **Use descriptions** - Add `.describe()` to schema fields
+4. **Retry logic** - Implement retries for production:
 
-### 2. Object Generation Takes Full Response Time
+```typescript
+async function generateWithRetry(schema, prompt, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await generateObject({ 
+        model: claudeCode('sonnet'), 
+        schema, 
+        prompt 
+      });
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+    }
+  }
+}
+```
 
-**Problem**: `streamObject` doesn't stream in real-time like text generation.
+### 5. Session Management
 
-**Expected Behavior**: This is normal. Since we use prompt engineering (not native JSON mode), the provider must wait for the complete response before parsing JSON. Use `generateObject` for clarity.
+**Problem**: Conversations don't maintain context.
 
-### 3. Missing Required Fields
+**Solution**: Use message history (recommended pattern):
 
-**Problem**: Generated objects missing required properties.
+```typescript
+const messages = [
+  { role: 'user', content: 'My name is Alice' },
+  { role: 'assistant', content: 'Nice to meet you, Alice!' },
+  { role: 'user', content: 'What is my name?' }
+];
 
-**Solutions**:
-- Emphasize requirements in your prompt
-- Use clear, descriptive field names
-- Add field descriptions: `z.string().describe('User full name')`
+const { text } = await generateText({
+  model: claudeCode('sonnet'),
+  messages, // Pass full conversation history
+});
+```
 
-### 4. Type Mismatches
+**Note**: While the provider returns session IDs in metadata, the recommended approach is to use message history for conversation continuity.
 
-**Problem**: String when expecting number, wrong date format, etc.
+### 6. Error Handling
 
-**Solutions**:
-- Be explicit in descriptions: "age as a number" not just "age"
-- For dates, specify format: `.describe('Date in YYYY-MM-DD format')`
-- Use regex patterns: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
+**Problem**: Need to handle different types of errors appropriately.
+
+**Solution**: Use the provider's error utilities:
+
+```typescript
+import { isAuthenticationError, getErrorMetadata } from 'ai-sdk-provider-claude-code';
+
+try {
+  const { text } = await generateText({
+    model: claudeCode('sonnet'),
+    prompt: 'Hello',
+  });
+} catch (error) {
+  if (isAuthenticationError(error)) {
+    console.error('Please run: claude login');
+  } else if (error.name === 'AbortError') {
+    console.error('Request was cancelled or timed out');
+  } else {
+    // Get additional error details
+    const metadata = getErrorMetadata(error);
+    console.error('Error details:', metadata);
+  }
+}
+```
+
+## Debugging Tips
+
+### 1. Verify Setup
+```bash
+# Check Claude CLI version
+claude --version
+
+# Test authentication
+npx tsx examples/check-cli.ts
+
+# Run integration tests
+npx tsx examples/integration-test.ts
+```
+
+### 2. Enable Debug Logging
+```typescript
+// Log provider metadata to debug issues
+const { text, providerMetadata } = await generateText({
+  model: claudeCode('sonnet'),
+  prompt: 'Test',
+});
+
+console.log('Metadata:', providerMetadata);
+// Shows: sessionId, costUsd, durationMs, rawUsage
+```
+
+### 3. Test Specific Features
+```bash
+# Test streaming
+npx tsx examples/streaming.ts
+
+# Test object generation
+npx tsx examples/generate-object-basic.ts
+
+# Test conversations
+npx tsx examples/conversation-history.ts
+
+# Test long-running tasks
+npx tsx examples/long-running-tasks.ts
+```
+
+## Platform-Specific Issues
+
+### Windows
+- Ensure Claude CLI is in your PATH
+- Use PowerShell or Command Prompt (not WSL) for installation
+
+### macOS
+- May need to allow CLI in Security & Privacy settings
+- Use Homebrew or direct npm installation
+
+### Linux
+- Ensure Node.js ≥ 18 is installed
+- May need to use `sudo` for global npm installs
+
+## Performance Tips
+
+1. **Model Selection**
+   - Use `sonnet` for faster responses
+   - Use `opus` for complex reasoning tasks
+
+2. **Request Optimization**
+   - Keep prompts concise and clear
+   - Use streaming for better UX
+   - Implement proper error handling
+
+3. **Resource Management**
+   - The provider manages concurrent requests automatically
+   - Use AbortSignal for cancellable requests
+   - Clean up timeouts in finally blocks
 
 ## Known Limitations
 
-1. **No Image Support**: CLI doesn't support image inputs
-2. **Process Limits**: Configurable concurrent process limit (default: 4) for system resource management
-3. **No Object-Tool Mode**: Only `object-json` mode supported via `generateObject`/`streamObject`
-4. **Object Generation Requires Full Response**: Cannot stream JSON in real-time
+1. **No Image Support**: The Claude Code SDK doesn't support image inputs
+2. **No Native Tool Calling**: Function calling isn't supported, but MCP servers can be configured
+3. **Object Generation**: Relies on prompt engineering rather than native JSON mode
+4. **Model Options**: Limited to 'opus' and 'sonnet' models
 
-## References
+## Getting Help
 
-- [Claude CLI Spawn Issue #771](https://github.com/anthropics/claude-code/issues/771)
-- [AI SDK Language Model Specification](https://sdk.vercel.ai/docs/reference/language-model-specification)
-- [Node.js child_process documentation](https://nodejs.org/api/child_process.html)
+1. **Check Examples**: Review the `/examples` directory for working code
+2. **Integration Test**: Run `npx tsx examples/integration-test.ts` to verify setup
+3. **GitHub Issues**: Report bugs at https://github.com/ben-vargas/ai-sdk-provider-claude-code/issues
+4. **Documentation**: See README.md for detailed API documentation
+
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Claude Code executable not found" | CLI not installed | Run `npm install -g @anthropic-ai/claude-code` |
+| "Authentication required" | Not logged in | Run `claude login` |
+| "No object generated" | Invalid JSON response | Simplify schema, improve prompt |
+| "Request timeout" | Task took too long | Increase timeout with AbortSignal |
+| "Session not found" | Invalid session ID | Use message history instead |

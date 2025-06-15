@@ -2,7 +2,7 @@
 
 > **⚠️ Alpha Software**: This project is in active development and seeking feedback from early adopters. Much of the implementation is AI-generated and we welcome refactoring suggestions for improved structure and addressing any noticeable issues.
 
-**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the official Claude Code SDK. Works with both Claude Pro/Max subscriptions and API key authentication.
+**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the official `@anthropic-ai/claude-code` SDK. Works with both Claude Pro/Max subscriptions and API key authentication.
 
 ## 🚀 Alpha Quick Start
 
@@ -271,10 +271,11 @@ const { text } = await generateText({
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 
 const claude = createClaudeCode({
-  pathToClaudeCodeExecutable: '/usr/local/bin/claude',
-  permissionMode: 'default', // Ask for permissions
-  timeoutMs: 180000, // 3 minutes
-  customSystemPrompt: 'You are a helpful coding assistant.',
+  defaultSettings: {
+    pathToClaudeCodeExecutable: '/usr/local/bin/claude',
+    permissionMode: 'default', // Ask for permissions
+    customSystemPrompt: 'You are a helpful coding assistant.',
+  }
 });
 
 const { text } = await generateText({
@@ -814,17 +815,17 @@ try {
 - **`LoadAPIKeyError`**: Authentication failures (exit code 401)
 - **`APICallError`**: All other CLI failures
   - `isRetryable: true` for timeouts
-  - `isRetryable: false` for CLI errors, spawn failures, etc.
+  - `isRetryable: false` for SDK errors, authentication failures, etc.
   - Contains metadata with `exitCode`, `stderr`, `promptExcerpt`
 
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common issues including:
-- CLI hanging with spawn/execFile
-- Streaming configuration
+- Authentication problems
+- SDK installation issues
 - Session management
 - Platform-specific issues
-- Timeout configuration for Claude Opus 4
+- Timeout handling with AbortSignal
 
 ## Project Structure
 
@@ -835,15 +836,15 @@ ai-sdk-provider-claude-code/
 │   ├── claude-code-provider.ts        # Provider factory
 │   ├── claude-code-language-model.ts  # AI SDK implementation using SDK
 │   ├── convert-to-claude-code-messages.ts # Message format converter
-│   ├── map-claude-code-finish-reason.ts  # Finish reason mapper
+│   ├── extract-json.ts                # JSON extraction for object generation
 │   ├── errors.ts                      # Error handling utilities
-│   ├── types.ts                       # TypeScript types and interfaces
+│   └── types.ts                       # TypeScript types and interfaces
 ├── examples/
 │   ├── README.md                      # Examples documentation
 │   ├── basic-usage.ts                 # Simple text generation with metadata
 │   ├── streaming.ts                   # Streaming response demo
 │   ├── custom-config.ts               # Provider configuration options
-│   ├── timeout-config.ts              # Timeout configuration examples
+│   ├── long-running-tasks.ts          # Timeout handling with AbortSignal
 │   ├── conversation-history.ts        # Multi-turn conversation with message history
 │   ├── generate-object.ts             # Original object generation example
 │   ├── generate-object-basic.ts       # Basic object generation patterns
@@ -865,7 +866,7 @@ ai-sdk-provider-claude-code/
 1. **No image support**: The CLI doesn't accept image inputs
 2. **Authentication required**: Requires separate Claude Code CLI authentication (`claude login`)
 3. **Session IDs change**: Each request gets a new session ID, even when using `--resume` 
-5. **No tool calling**: Function/tool calling is not supported by the CLI
+4. **No native tool calling**: Function/tool calling is not supported, but MCP servers can be configured
 
 ## Contributing
 
