@@ -1,6 +1,6 @@
 {
     "name": "ai-sdk-provider-claude-code",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "AI SDK provider for Claude via Claude Code CLI (use Pro/Max subscription)",
     "keywords": [
         "ai-sdk",
