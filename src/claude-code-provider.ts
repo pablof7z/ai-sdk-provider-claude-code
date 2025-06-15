@@ -1,40 +1,47 @@
-import { ClaudeCodeLanguageModel } from './claude-code-language-model.js';
-import { ClaudeCodeCLI } from './claude-code-cli.js';
+import type { LanguageModelV1, ProviderV1 } from '@ai-sdk/provider';
+import { ClaudeCodeLanguageModel, type ClaudeCodeModelId } from './claude-code-language-model.js';
 import type { ClaudeCodeSettings } from './types.js';
-import { claudeCodeModelSchema, claudeCodeSettingsSchema } from './types.js';
 
-export interface ClaudeCodeProvider {
-  (modelId: 'opus' | 'sonnet', settings?: ClaudeCodeSettings): ClaudeCodeLanguageModel;
+export interface ClaudeCodeProvider extends ProviderV1 {
+  (modelId: ClaudeCodeModelId, settings?: ClaudeCodeSettings): LanguageModelV1;
 
-  languageModel(modelId: 'opus' | 'sonnet', settings?: ClaudeCodeSettings): ClaudeCodeLanguageModel;
+  languageModel(
+    modelId: ClaudeCodeModelId,
+    settings?: ClaudeCodeSettings,
+  ): LanguageModelV1;
 }
 
-export function createClaudeCode(options: ClaudeCodeSettings = {}): ClaudeCodeProvider {
-  // Validate provider settings
-  const validatedOptions = claudeCodeSettingsSchema.parse(options);
-  const cli = new ClaudeCodeCLI(validatedOptions.maxConcurrentProcesses);
+export interface ClaudeCodeProviderSettings {
+  /**
+   * Default settings to use for all models.
+   */
+  defaultSettings?: ClaudeCodeSettings;
+}
 
-  const createModel = (modelId: 'opus' | 'sonnet', settings: ClaudeCodeSettings = {}) => {
-    // Validate per-model settings if provided
-    const validatedSettings = settings ? claudeCodeSettingsSchema.parse(settings) : {};
-    
-    const config = claudeCodeModelSchema.parse({
-      model: modelId,
-      cliPath: validatedSettings.cliPath ?? validatedOptions.cliPath ?? 'claude',
-      skipPermissions: validatedSettings.skipPermissions ?? validatedOptions.skipPermissions ?? true,
-      timeoutMs: validatedSettings.timeoutMs ?? validatedOptions.timeoutMs ?? 120000,
-      sessionId: validatedSettings.sessionId ?? validatedOptions.sessionId,
-      enablePtyStreaming: validatedSettings.enablePtyStreaming ?? validatedOptions.enablePtyStreaming,
-      allowedTools: validatedSettings.allowedTools ?? validatedOptions.allowedTools,
-      disallowedTools: validatedSettings.disallowedTools ?? validatedOptions.disallowedTools,
-      largeResponseThreshold: validatedSettings.largeResponseThreshold ?? validatedOptions.largeResponseThreshold,
+/**
+ * Create a Claude Code provider using the official SDK.
+ *
+ * @param options - Provider configuration options
+ * @returns Claude Code provider instance
+ */
+export function createClaudeCode(
+  options: ClaudeCodeProviderSettings = {},
+): ClaudeCodeProvider {
+  const createModel = (
+    modelId: ClaudeCodeModelId,
+    settings: ClaudeCodeSettings = {},
+  ): LanguageModelV1 => {
+    return new ClaudeCodeLanguageModel({
+      id: modelId,
+      settings: {
+        ...options.defaultSettings,
+        ...settings,
+      },
     });
-
-    return new ClaudeCodeLanguageModel(modelId, config, cli);
   };
 
   const provider = function (
-    modelId: 'opus' | 'sonnet',
+    modelId: ClaudeCodeModelId,
     settings?: ClaudeCodeSettings,
   ) {
     if (new.target) {
@@ -43,7 +50,7 @@ export function createClaudeCode(options: ClaudeCodeSettings = {}): ClaudeCodePr
       );
     }
 
-    return createModel(modelId, settings ?? {});
+    return createModel(modelId, settings);
   };
 
   provider.languageModel = createModel;

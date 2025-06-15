@@ -5,9 +5,9 @@ async function main() {
   try {
     // Create a custom configured provider
     const claude = createClaudeCode({
-      cliPath: 'claude', // or '/usr/local/bin/claude' if not in PATH
-      skipPermissions: false, // Ask for permissions
-      maxConcurrentProcesses: 2, // Limit concurrent CLI processes
+      pathToClaudeCodeExecutable: 'claude', // or '/usr/local/bin/claude' if not in PATH
+      permissionMode: 'default', // Ask for permissions (or 'bypassPermissions' to skip)
+      timeoutMs: 300000, // 5 minutes timeout for complex tasks
     });
 
     // Use the custom provider
@@ -20,7 +20,7 @@ async function main() {
 
     // You can also override settings per model
     const { text: text2 } = await generateText({
-      model: claude('sonnet', { skipPermissions: true }),
+      model: claude('sonnet', { permissionMode: 'bypassPermissions' }),
       prompt: 'Name three programming languages.',
     });
 

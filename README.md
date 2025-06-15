@@ -2,7 +2,7 @@
 
 > **⚠️ Alpha Software**: This project is in active development and seeking feedback from early adopters. Much of the implementation is AI-generated and we welcome refactoring suggestions for improved structure and addressing any noticeable issues.
 
-**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the Claude Code CLI. Works with both Claude Pro/Max subscriptions and API key authentication.
+**ai-sdk-provider-claude-code** is a community provider for the [Vercel AI SDK](https://sdk.vercel.ai/docs) that enables using Claude through the official Claude Code SDK. Works with both Claude Pro/Max subscriptions and API key authentication.
 
 ## 🚀 Alpha Quick Start
 
@@ -66,10 +66,10 @@ npx tsx examples/basic-usage.ts
 - ⏱️ Configurable timeouts (1s-10min) optimized for Claude Opus 4
 - 📈 Token usage statistics with detailed breakdowns
 - 🏷️ Rich provider metadata (session IDs, timing, costs)
-- ⚡ Zero-latency streaming with readline interface
+- ⚡ Native streaming via AsyncGenerator pattern
 - 🎯 Object generation support with JSON schema validation
-- 🔀 Automatic streaming for large responses (prevents 8K truncation)
-- 🚦 Abort-aware request queue for efficient cancellation handling
+- 🔧 Direct access to Claude Code features (MCP servers, permission modes)
+- 🚦 Built-in abort handling with AbortController
 
 ## Model Support
 
@@ -248,14 +248,17 @@ const { text } = await generateText({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `cliPath` | `string` | `'claude'` | Path to Claude CLI executable |
-| `skipPermissions` | `boolean` | `true` | Whether to add `--dangerously-skip-permissions` flag |
-| `sessionId` | `string` | `undefined` | Resume a previous conversation session |
-| `timeoutMs` | `number` | `120000` | Timeout for CLI operations in milliseconds (1-600 seconds) |
-| `maxConcurrentProcesses` | `number` | `4` | Maximum number of concurrent CLI processes (queue with abort-aware handling) |
-| `largeResponseThreshold` | `number` | `1000` | Prompt length threshold for auto-streaming (characters) |
-| `allowedTools` | `string[]` | `[]` | Tools to explicitly allow (both built-in and MCP) |
-| `disallowedTools` | `string[]` | `[]` | Tools to restrict (both built-in and MCP) |
+| `model` | `'opus' \| 'sonnet'` | `'opus'` | Model to use |
+| `timeoutMs` | `number` | `120000` | Timeout in milliseconds (1-600 seconds) |
+| `pathToClaudeCodeExecutable` | `string` | `'claude'` | Path to Claude CLI executable |
+| `customSystemPrompt` | `string` | `undefined` | Custom system prompt |
+| `appendSystemPrompt` | `string` | `undefined` | Append to system prompt |
+| `maxTurns` | `number` | `undefined` | Maximum conversation turns |
+| `maxThinkingTokens` | `number` | `undefined` | Maximum thinking tokens |
+| `permissionMode` | `string` | `'default'` | Permission mode for tools |
+| `allowedTools` | `string[]` | `undefined` | Tools to explicitly allow |
+| `disallowedTools` | `string[]` | `undefined` | Tools to restrict |
+| `mcpServers` | `object` | `undefined` | MCP server configuration |
 
 ### Custom Configuration
 
@@ -263,10 +266,10 @@ const { text } = await generateText({
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 
 const claude = createClaudeCode({
-  cliPath: '/usr/local/bin/claude',
-  skipPermissions: false,
-  maxConcurrentProcesses: 2,
+  pathToClaudeCodeExecutable: '/usr/local/bin/claude',
+  permissionMode: 'default', // Ask for permissions
   timeoutMs: 180000, // 3 minutes
+  customSystemPrompt: 'You are a helpful coding assistant.',
 });
 
 const { text } = await generateText({
@@ -375,54 +378,52 @@ const { text } = await generateText({
 | `disallowedTools: []` | `--disallowedTools` (empty) | No effect - normal permissions apply |
 | `disallowedTools: ['Write']` | `--disallowedTools Write` | Blocks Write tool, others follow normal permissions |
 
-## Auto-Streaming for Large Responses
+## Advanced Configuration
 
-The provider automatically switches to streaming mode internally when responses might exceed Node.js's 8K stdout buffer limit. This prevents truncation errors for large JSON objects or lengthy responses.
+### MCP Server Support
 
-### How It Works
-
-The provider detects when to use streaming based on:
-- **Prompt length**: Prompts longer than the threshold (default: 1000 chars)
-- **Object generation**: Always uses streaming for `generateObject`/`streamObject`
-- **Token limits**: When `maxTokens` > 2000
-
-This is completely transparent - you use the same API whether the provider uses streaming internally or not:
-
-```typescript
-// Automatically uses streaming internally for large responses
-const { object } = await generateObject({
-  model: claudeCode('opus'),
-  schema: complexSchema,
-  prompt: 'Generate a detailed project plan with 20 tasks...',
-});
-
-// Also triggers auto-streaming due to high token limit
-const { text } = await generateText({
-  model: claudeCode('opus'),
-  prompt: 'Write a short story',
-  maxTokens: 5000,
-});
-```
-
-### Configuration
-
-You can adjust the threshold for auto-streaming:
+The provider supports Model Context Protocol (MCP) servers for extended functionality:
 
 ```typescript
 const claude = createClaudeCode({
-  largeResponseThreshold: 500, // Switch to streaming for prompts > 500 chars
+  mcpServers: {
+    filesystem: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem'],
+    },
+    github: {
+      type: 'sse',
+      url: 'https://mcp.github.com/api',
+      headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+    },
+  },
 });
 ```
 
-Set to 0 to always use streaming, or a very high number to disable auto-streaming.
+### Permission Modes
 
-## Request Cancellation and Queue Management
+Control how Claude Code handles tool permissions:
 
-The provider includes intelligent queue management that efficiently handles request cancellation:
+```typescript
+const claude = createClaudeCode({
+  permissionMode: 'bypassPermissions', // Skip all permission prompts
+  // Other options: 'default', 'acceptEdits', 'plan'
+});
+```
 
-### Abort-Aware Queue
+### Custom System Prompts
 
-When multiple concurrent requests exceed `maxConcurrentProcesses`, queued requests monitor their abort signals:
+```typescript
+const claude = createClaudeCode({
+  customSystemPrompt: 'You are an expert Python developer.',
+  // Or append to existing prompt:
+  appendSystemPrompt: 'Always use type hints in Python code.',
+});
+```
+
+## Request Cancellation
+
+The provider supports request cancellation through the standard AbortController API:
 
 ```typescript
 import { generateText } from 'ai';
@@ -438,59 +439,69 @@ const promise = generateText({
   abortSignal: controller.signal,
 });
 
-// Cancel while queued - no CLI process is spawned
+// Cancel the request
 controller.abort();
 
-// The promise rejects immediately without wasting resources
+// The promise rejects with AbortError
 try {
   await promise;
 } catch (error) {
-  console.log('Request cancelled before processing');
-}
-```
-
-**Benefits:**
-- **Zero wasted spawns**: Aborted requests are removed from queue before spawning
-- **Immediate cancellation**: No delay when cancelling queued requests
-- **Resource efficiency**: Pool slots freed instantly for other requests
-- **Clean error handling**: Proper error propagation for cancelled requests
-
-This is especially useful in UI scenarios where users might cancel requests or navigate away while requests are queued.
-
-## Implementation Details
-
-### JSON Output Format
-
-The provider uses Claude CLI's `--output-format json` flag for reliable parsing of responses. This provides structured output with:
-
-- **Result text**: The actual response from Claude
-- **Session ID**: For conversation continuity
-- **Error handling**: Structured error information
-- **Metadata**: Usage statistics and timing information
-
-Example JSON response:
-```json
-{
-  "type": "result",
-  "subtype": "success",
-  "result": "Hello! How can I help you today?",
-  "session_id": "abc-123-def",
-  "is_error": false,
-  "duration_ms": 1500,
-  "usage": {
-    "input_tokens": 10,
-    "output_tokens": 20
+  if (error.name === 'AbortError') {
+    console.log('Request was cancelled');
   }
 }
 ```
 
-### Streaming Implementation
+This is especially useful in UI scenarios where users might cancel requests or navigate away.
 
-The provider uses a unified spawn-based architecture with readline interface for zero-latency streaming:
-- **Non-streaming**: Uses `spawn` with `--print --output-format json` for reliable responses
-- **Streaming**: Uses `spawn` with `--verbose --output-format stream-json` for real-time streaming
-  - Note: `--verbose` is required by Claude CLI when using `stream-json` format
-  - Readline interface eliminates polling delays for immediate response
+## Implementation Details
+
+### SDK Message Types
+
+The SDK provides structured message types for different events:
+
+#### Assistant Message
+```typescript
+{
+  type: 'assistant',
+  message: {
+    content: [{ type: 'text', text: 'Hello!' }],
+    // ... other fields
+  },
+  session_id: 'abc-123-def'
+}
+```
+
+#### Result Message
+```typescript
+{
+  type: 'result',
+  subtype: 'success' | 'error_max_turns' | 'error_during_execution',
+  session_id: 'abc-123-def',
+  usage: { /* token counts */ },
+  total_cost_usd: 0.001,
+  duration_ms: 1500
+}
+```
+
+#### System Message
+```typescript
+{
+  type: 'system',
+  subtype: 'init',
+  session_id: 'abc-123-def',
+  tools: ['Read', 'Write', 'Bash'],
+  model: 'opus'
+}
+```
+
+### SDK Implementation
+
+The provider uses the official `@anthropic-ai/claude-code` SDK which provides:
+- **AsyncGenerator pattern**: Native streaming support with `query()` function
+- **Structured messages**: Rich message types (assistant, result, system, error)
+- **Built-in features**: AbortController, session management, MCP servers
+- **Automatic handling**: Process management, error handling, and output parsing
 
 ### Provider Metadata
 
@@ -817,15 +828,12 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common issues incl
 ai-sdk-provider-claude-code/
 ├── src/
 │   ├── index.ts                       # Main exports
-│   ├── claude-code-provider.ts        # Provider factory with timeout config
-│   ├── claude-code-language-model.ts  # AI SDK implementation with full metadata
-│   ├── claude-code-cli.ts             # Unified spawn-based CLI wrapper with readline streaming
-│   ├── claude-code-parser.ts          # JSON event parser for streaming
-│   ├── errors.ts                      # Comprehensive error handling
-│   ├── types.ts                       # TypeScript types with validation schemas
-│   └── utils/                         # Utility functions
-│       ├── parse.ts                   # Parsing and metadata helpers
-│       └── usage.ts                   # Token usage calculation
+│   ├── claude-code-provider.ts        # Provider factory
+│   ├── claude-code-language-model.ts  # AI SDK implementation using SDK
+│   ├── convert-to-claude-code-messages.ts # Message format converter
+│   ├── map-claude-code-finish-reason.ts  # Finish reason mapper
+│   ├── errors.ts                      # Error handling utilities
+│   ├── types.ts                       # TypeScript types and interfaces
 ├── examples/
 │   ├── README.md                      # Examples documentation
 │   ├── basic-usage.ts                 # Simple text generation with metadata

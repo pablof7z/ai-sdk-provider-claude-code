@@ -1,5 +1,6 @@
 export { createClaudeCode, claudeCode } from './claude-code-provider.js';
-export type { ClaudeCodeProvider } from './claude-code-provider.js';
+export type { ClaudeCodeProvider, ClaudeCodeProviderSettings } from './claude-code-provider.js';
+export type { ClaudeCodeModelId } from './claude-code-language-model.js';
 export type { ClaudeCodeSettings } from './types.js';
 export { 
   isAuthenticationError, 
