@@ -63,7 +63,7 @@ async function testErrorHandling() {
   console.log('\n🧪 Test 4: Error handling...');
   try {
     const badClaude = claudeCode('sonnet', { 
-      cliPath: 'claude-nonexistent' 
+      pathToClaudeCodeExecutable: 'claude-nonexistent' 
     });
     
     await generateText({
