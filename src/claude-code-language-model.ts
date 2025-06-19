@@ -200,7 +200,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     return {
       model: this.getModel(),
       abortController,
-      resume: this.sessionId,
+      resume: this.settings.resume ?? this.sessionId,
       pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
       customSystemPrompt: this.settings.customSystemPrompt,
       appendSystemPrompt: this.settings.appendSystemPrompt,
