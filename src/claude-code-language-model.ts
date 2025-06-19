@@ -345,8 +345,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
+    let abortListener: (() => void) | undefined;
     if (options.abortSignal) {
-      options.abortSignal.addEventListener('abort', () => abortController.abort());
+      abortListener = () => abortController.abort();
+      options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
     const queryOptions = this.createQueryOptions(abortController);
@@ -398,6 +400,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       
       // Use unified error handler
       throw this.handleClaudeCodeError(error, messagesPrompt);
+    } finally {
+      if (options.abortSignal && abortListener) {
+        options.abortSignal.removeEventListener('abort', abortListener);
+      }
     }
 
     // Extract JSON if in object-json mode
@@ -446,8 +452,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
+    let abortListener: (() => void) | undefined;
     if (options.abortSignal) {
-      options.abortSignal.addEventListener('abort', () => abortController.abort());
+      abortListener = () => abortController.abort();
+      options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
     const queryOptions = this.createQueryOptions(abortController);
@@ -495,7 +503,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
                 };
               }
 
-              let finishReason: LanguageModelV1FinishReason = mapClaudeCodeFinishReason(message.subtype);
+              const finishReason: LanguageModelV1FinishReason = mapClaudeCodeFinishReason(message.subtype);
 
               // Store session ID in the model instance
               this.setSessionId(message.session_id);
@@ -561,6 +569,15 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           });
           
           controller.close();
+        } finally {
+          if (options.abortSignal && abortListener) {
+            options.abortSignal.removeEventListener('abort', abortListener);
+          }
+        }
+      },
+      cancel: () => {
+        if (options.abortSignal && abortListener) {
+          options.abortSignal.removeEventListener('abort', abortListener);
         }
       },
     });
