@@ -74,9 +74,13 @@ ai-sdk-provider-claude-code/
 │   ├── claude-code-provider.ts           # Provider factory
 │   ├── claude-code-language-model.ts     # Language model implementation
 │   ├── convert-to-claude-code-messages.ts # Message formatting
-│   ├── extract-json.ts                   # JSON extraction for objects
+│   ├── extract-json.ts                   # JSON extraction (using jsonc-parser)
 │   ├── errors.ts                         # Error utilities
 │   └── types.ts                          # TypeScript definitions
+├── docs/
+│   ├── GUIDE.md                          # Comprehensive usage guide
+│   ├── TROUBLESHOOTING.md                # Common issues and solutions
+│   └── DEVELOPMENT-STATUS.md             # This document
 ├── examples/
 │   ├── README.md                         # Examples guide
 │   ├── basic-usage.ts                    # Simple generation
@@ -95,7 +99,7 @@ ai-sdk-provider-claude-code/
 ├── tsup.config.ts                        # Build configuration
 ├── package.json                          # Package metadata
 ├── CHANGELOG.md                          # Version history
-├── README.md                             # Main documentation
+├── README.md                             # Concise getting started guide
 └── LICENSE                               # MIT license
 ```
 
@@ -204,13 +208,15 @@ const { text } = await generateText({
 
 ### Model Capabilities
 
-| Model | Text Generation | Object Generation | Image Input | Tool Calling |
-|-------|----------------|-------------------|-------------|--------------|
-| opus  | ✅ | ✅ | ❌ | ❌ |
-| sonnet | ✅ | ✅ | ❌ | ❌ |
+| Model | Text Generation | Object Generation | Image Input | AI SDK Tool Calling | MCP Tools |
+|-------|----------------|-------------------|-------------|---------------------|-----------|
+| opus  | ✅ | ✅ | ❌ | ❌ | ✅ |
+| sonnet | ✅ | ✅ | ❌ | ❌ | ✅ |
 
 <Note>
-  The provider uses the official Claude Code SDK. Image inputs and native tool calling 
-  are not supported, but you can configure MCP servers for extended functionality.
+  The provider uses the official Claude Code SDK. While the models support tool use, this provider 
+  doesn't implement the AI SDK's tool calling interface. However, you can configure MCP servers 
+  for tool functionality, and Claude can use built-in tools (Bash, Read, Write, etc.) through 
+  the Claude Code CLI.
 </Note>
 ```

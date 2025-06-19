@@ -20,7 +20,7 @@ claude login
 **Verification**:
 ```bash
 # Check if authenticated
-npx tsx examples/check-cli.ts
+npx tsx ../examples/check-cli.ts
 ```
 
 ### 2. SDK Not Found
@@ -150,10 +150,10 @@ try {
 claude --version
 
 # Test authentication
-npx tsx examples/check-cli.ts
+npx tsx ../examples/check-cli.ts
 
 # Run integration tests
-npx tsx examples/integration-test.ts
+npx tsx ../examples/integration-test.ts
 ```
 
 ### 2. Enable Debug Logging
@@ -171,16 +171,16 @@ console.log('Metadata:', providerMetadata);
 ### 3. Test Specific Features
 ```bash
 # Test streaming
-npx tsx examples/streaming.ts
+npx tsx ../examples/streaming.ts
 
 # Test object generation
-npx tsx examples/generate-object-basic.ts
+npx tsx ../examples/generate-object-basic.ts
 
 # Test conversations
-npx tsx examples/conversation-history.ts
+npx tsx ../examples/conversation-history.ts
 
 # Test long-running tasks
-npx tsx examples/long-running-tasks.ts
+npx tsx ../examples/long-running-tasks.ts
 ```
 
 ## Platform-Specific Issues
@@ -216,16 +216,16 @@ npx tsx examples/long-running-tasks.ts
 ## Known Limitations
 
 1. **No Image Support**: The Claude Code SDK doesn't support image inputs
-2. **No Native Tool Calling**: Function calling isn't supported, but MCP servers can be configured
+2. **No AI SDK Tool Calling**: The AI SDK's function calling interface isn't implemented, but Claude can use tools via MCP servers and built-in CLI tools
 3. **Object Generation**: Relies on prompt engineering rather than native JSON mode
 4. **Model Options**: Limited to 'opus' and 'sonnet' models
 
 ## Getting Help
 
-1. **Check Examples**: Review the `/examples` directory for working code
-2. **Integration Test**: Run `npx tsx examples/integration-test.ts` to verify setup
+1. **Check Examples**: Review the `../examples` directory for working code
+2. **Integration Test**: Run `npx tsx ../examples/integration-test.ts` to verify setup
 3. **GitHub Issues**: Report bugs at https://github.com/ben-vargas/ai-sdk-provider-claude-code/issues
-4. **Documentation**: See README.md for detailed API documentation
+4. **Documentation**: See the main README.md and GUIDE.md for detailed API documentation
 
 ## Common Error Messages
 
