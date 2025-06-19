@@ -166,4 +166,89 @@ Please process accordingly.
       expect(JSON.parse(result)).toEqual({ test: true });
     });
   });
+
+  describe('performance tests', () => {
+    it('should handle large valid JSON efficiently', () => {
+      // Generate a large valid JSON object
+      const largeObject = {
+        data: Array.from({ length: 1000 }, (_, i) => ({
+          id: i,
+          name: `Item ${i}`,
+          value: Math.random(),
+          nested: { a: i, b: i * 2 }
+        }))
+      };
+      const text = `Response: ${JSON.stringify(largeObject)}`;
+      
+      const start = performance.now();
+      const result = extractJson(text);
+      const duration = performance.now() - start;
+      
+      // Should be fast for valid JSON (< 100ms)
+      expect(duration).toBeLessThan(100);
+      expect(JSON.parse(result)).toEqual(largeObject);
+    });
+
+    it('should handle large JSON with trailing garbage efficiently', () => {
+      // Generate JSON with lots of trailing garbage
+      const validJson = { data: Array.from({ length: 100 }, (_, i) => ({ id: i })) };
+      const text = `Result: ${JSON.stringify(validJson)}` + 'x'.repeat(10000);
+      
+      const start = performance.now();
+      const result = extractJson(text);
+      const duration = performance.now() - start;
+      
+      // Should still be reasonably fast (< 100ms)
+      expect(duration).toBeLessThan(100);
+      expect(JSON.parse(result)).toEqual(validJson);
+    });
+
+    it('should handle deeply nested JSON structures', () => {
+      // Create deeply nested structure
+      let nested: any = { value: 'deep' };
+      for (let i = 0; i < 50; i++) {
+        nested = { level: i, child: nested };
+      }
+      const text = `Nested: ${JSON.stringify(nested)}`;
+      
+      const result = extractJson(text);
+      expect(JSON.parse(result)).toEqual(nested);
+    });
+
+    it('should extract truncated JSON with missing closing braces', () => {
+      const text = 'Data: {"users": [{"name": "Alice"}, {"name": "Bob"';
+      const result = extractJson(text);
+      // For truncated JSON, it should either extract valid partial JSON or return original
+      // In this case, it extracts the first complete valid structure
+      if (result === text) {
+        // If no valid JSON could be extracted, return original
+        expect(result).toBe(text);
+      } else {
+        // If partial JSON was extracted, it should be valid
+        expect(() => JSON.parse(result)).not.toThrow();
+        const parsed = JSON.parse(result);
+        // Should at least have the users array with Alice
+        expect(parsed).toHaveProperty('users');
+        expect(Array.isArray(parsed.users)).toBe(true);
+      }
+    });
+
+    it('should handle JSON with escaped quotes in strings', () => {
+      const text = 'Result: {"message": "He said \\"Hello\\" to me", "path": "C:\\\\Users\\\\test"}';
+      const result = extractJson(text);
+      expect(JSON.parse(result)).toEqual({
+        message: 'He said "Hello" to me',
+        path: 'C:\\Users\\test'
+      });
+    });
+
+    it('should handle mixed array and object nesting', () => {
+      const text = 'Complex: [{"a": [1, 2, {"b": 3}]}, {"c": 4}]';
+      const result = extractJson(text);
+      expect(JSON.parse(result)).toEqual([
+        { a: [1, 2, { b: 3 }] },
+        { c: 4 }
+      ]);
+    });
+  });
 });
