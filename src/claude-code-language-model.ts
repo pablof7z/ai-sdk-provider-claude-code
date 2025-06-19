@@ -277,7 +277,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           ? error.message 
           : 'Request timed out',
         promptExcerpt: messagesPrompt.substring(0, 200),
-        timeoutMs: 120000, // Default timeout, could be made configurable
+        // Don't specify timeoutMs since we don't know the actual timeout value
+        // It's controlled by the consumer via AbortSignal
       });
     }
 

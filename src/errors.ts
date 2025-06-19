@@ -127,7 +127,7 @@ export function createTimeoutError({
 }: {
   message: string;
   promptExcerpt?: string;
-  timeoutMs: number;
+  timeoutMs?: number;
 }): APICallError {
   // Store timeoutMs in metadata for potential use by error handlers
   const metadata: ClaudeCodeErrorMetadata = {
@@ -140,7 +140,7 @@ export function createTimeoutError({
     isRetryable: true,
     url: 'claude-code-cli://command',
     requestBodyValues: promptExcerpt ? { prompt: promptExcerpt } : undefined,
-    data: { ...metadata, timeoutMs },
+    data: timeoutMs !== undefined ? { ...metadata, timeoutMs } : metadata,
   });
 }
 

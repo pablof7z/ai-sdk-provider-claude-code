@@ -17,7 +17,13 @@ export const claudeCodeSettingsSchema = z.object({
   maxTurns: z.number().int().min(1).max(100).optional(),
   maxThinkingTokens: z.number().int().positive().max(100000).optional(),
   cwd: z.string().refine(
-    (val) => !val || existsSync(val),
+    (val) => {
+      // Skip directory validation in non-Node environments
+      if (typeof process === 'undefined' || !process.versions?.node) {
+        return true;
+      }
+      return !val || existsSync(val);
+    },
     { message: "Working directory must exist" }
   ).optional(),
   executable: z.enum(['bun', 'deno', 'node']).optional(),
