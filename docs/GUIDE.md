@@ -113,14 +113,16 @@ const { text, providerMetadata } = await generateText({
   messages: [{ role: 'user', content: 'My name is Bob.' }],
 });
 
-// Resume with session ID
+// Resume using the session ID
 const sessionId = providerMetadata?.['claude-code']?.sessionId;
 
 const { text: response } = await generateText({
-  model: claudeCode('sonnet', { sessionId }),
+  model: claudeCode('sonnet', { resume: sessionId }),
   messages: [{ role: 'user', content: 'What is my name?' }],
 });
 ```
+
+`resume` continues a previous CLI session instead of starting a new one.
 
 ---
 
@@ -165,6 +167,7 @@ const { text } = await generateText({
 | `allowedTools` | `string[]` | `undefined` | Tools to explicitly allow |
 | `disallowedTools` | `string[]` | `undefined` | Tools to restrict |
 | `mcpServers` | `object` | `undefined` | MCP server configuration |
+| `resume` | `string` | `undefined` | Resume an existing session |
 
 ### Custom Configuration
 

@@ -18,6 +18,16 @@ npm install git+https://github.com/ben-vargas/ai-sdk-provider-claude-code.git
 npm install ai
 ```
 
+## Disclaimer
+
+**This is an unofficial community provider** and is not affiliated with or endorsed by Anthropic or Vercel. By using this provider:
+
+- You understand that your data will be sent to Anthropic's servers through the Claude Code CLI
+- You agree to comply with [Anthropic's Terms of Service](https://www.anthropic.com/legal/consumer-terms)
+- You acknowledge this software is provided "as is" without warranties of any kind
+
+Please ensure you have appropriate permissions and comply with all applicable terms when using this provider.
+
 ## Quick Start
 
 ```typescript

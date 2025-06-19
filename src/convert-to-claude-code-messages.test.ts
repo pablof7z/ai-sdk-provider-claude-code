@@ -5,7 +5,7 @@ describe('convertToClaudeCodeMessages', () => {
   it('should convert a simple user message', () => {
     const result = convertToClaudeCodeMessages([
       { role: 'user', content: 'Hello, Claude!' }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Human: Hello, Claude!');
     expect(result.systemPrompt).toBeUndefined();
@@ -14,7 +14,7 @@ describe('convertToClaudeCodeMessages', () => {
   it('should convert a simple assistant message', () => {
     const result = convertToClaudeCodeMessages([
       { role: 'assistant', content: 'Hello! How can I help you?' }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Assistant: Hello! How can I help you?');
     expect(result.systemPrompt).toBeUndefined();
@@ -23,7 +23,7 @@ describe('convertToClaudeCodeMessages', () => {
   it('should handle system message', () => {
     const result = convertToClaudeCodeMessages([
       { role: 'system', content: 'You are a helpful assistant.' }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('You are a helpful assistant.');
     expect(result.systemPrompt).toBe('You are a helpful assistant.');
@@ -35,7 +35,7 @@ describe('convertToClaudeCodeMessages', () => {
       { role: 'user', content: 'What is 2+2?' },
       { role: 'assistant', content: '2+2 equals 4.' },
       { role: 'user', content: 'Thanks!' }
-    ]);
+    ] as any);
     
     expect(result.systemPrompt).toBe('Be helpful.');
     expect(result.messagesPrompt).toBe('Be helpful.\n\nHuman: What is 2+2?\n\nAssistant: 2+2 equals 4.\n\nHuman: Thanks!');
@@ -51,7 +51,7 @@ describe('convertToClaudeCodeMessages', () => {
           { type: 'text', text: 'world!' }
         ]
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Human: Hello\n, \nworld!');
   });
@@ -80,7 +80,7 @@ describe('convertToClaudeCodeMessages', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'Check this file:' },
-          { type: 'file' as any, data: new Uint8Array([1, 2, 3]), mimeType: 'text/plain' }
+          { type: 'file', data: 'data:text/plain;base64,AQID', mimeType: 'text/plain' }
         ]
       }
     ]);
@@ -103,7 +103,7 @@ describe('convertToClaudeCodeMessages', () => {
           }
         ]
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Tool Result (calculator): {"answer":42}');
   });
@@ -122,7 +122,7 @@ describe('convertToClaudeCodeMessages', () => {
           }
         ]
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Tool Result (search): "Network error"');
   });
@@ -133,7 +133,7 @@ describe('convertToClaudeCodeMessages', () => {
         role: 'user',
         content: []
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('');
   });
@@ -146,7 +146,7 @@ describe('convertToClaudeCodeMessages', () => {
           { type: 'text', text: undefined as any }
         ]
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('');
   });
@@ -171,7 +171,7 @@ describe('convertToClaudeCodeMessages', () => {
           }
         ]
       }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Tool Result (database): {"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"count":2}');
   });
@@ -182,7 +182,7 @@ describe('convertToClaudeCodeMessages', () => {
       { role: 'user', content: 'Second message' },
       { role: 'assistant', content: 'Response' },
       { role: 'user', content: 'Third message' }
-    ]);
+    ] as any);
     
     expect(result.messagesPrompt).toBe('Human: First message\n\nHuman: Second message\n\nAssistant: Response\n\nHuman: Third message');
   });

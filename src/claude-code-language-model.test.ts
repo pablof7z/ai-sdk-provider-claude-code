@@ -63,10 +63,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [{ role: 'user', content: 'Say hello' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
         mode: { type: 'regular' },
       });
 
@@ -99,10 +100,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [{ role: 'user', content: 'Complex task' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Complex task' }] }],
         mode: { type: 'regular' },
       });
 
@@ -122,7 +124,8 @@ describe('ClaudeCodeLanguageModel', () => {
       abortController.abort(abortReason);
 
       const promise = model.doGenerate({
-        prompt: [{ role: 'user', content: 'Test abort' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test abort' }] }],
         mode: { type: 'regular' },
         abortSignal: abortController.signal,
       });
@@ -162,10 +165,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [{ role: 'user', content: 'Say hello' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
         mode: { type: 'regular' },
       });
 
@@ -192,6 +196,141 @@ describe('ClaudeCodeLanguageModel', () => {
         finishReason: 'stop',
         usage: {
           promptTokens: 10,
+          completionTokens: 5,
+        },
+      });
+    });
+
+    it('should emit JSON once in object-json mode and return finish metadata', async () => {
+      const mockResponse = {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: '{"a": 1' }],
+            },
+          };
+          yield {
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: ', "b": 2}' }],
+            },
+          };
+          yield {
+            type: 'result',
+            subtype: 'success',
+            session_id: 'json-session-1',
+            usage: {
+              input_tokens: 6,
+              output_tokens: 3,
+            },
+            total_cost_usd: 0.001,
+            duration_ms: 1000,
+          };
+        },
+      };
+
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
+
+      const result = await model.doStream({
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return JSON' }] }],
+        mode: { type: 'object-json' },
+        temperature: 0.5, // This will trigger a warning
+      });
+
+      const chunks: any[] = [];
+      const reader = result.stream.getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0]).toEqual({
+        type: 'text-delta',
+        textDelta: '{\n  "a": 1,\n  "b": 2\n}',
+      });
+      expect(chunks[1]).toMatchObject({
+        type: 'finish',
+        finishReason: 'stop',
+        usage: {
+          promptTokens: 6,
+          completionTokens: 3,
+        },
+        providerMetadata: {
+          'claude-code': {
+            sessionId: 'json-session-1',
+            costUsd: 0.001,
+            durationMs: 1000,
+          },
+        },
+      });
+
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings?.[0]).toMatchObject({
+        type: 'unsupported-setting',
+        setting: 'temperature',
+      });
+    });
+
+    it('should handle malformed JSON in object-json streaming mode', async () => {
+      const mockResponse = {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: 'Here is the JSON: {"a": 1, "b": ' }],
+            },
+          };
+          yield {
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: 'invalid}' }],
+            },
+          };
+          yield {
+            type: 'result',
+            subtype: 'success',
+            session_id: 'json-session-2',
+            usage: {
+              input_tokens: 8,
+              output_tokens: 5,
+            },
+          };
+        },
+      };
+
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
+
+      const result = await model.doStream({
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return invalid JSON' }] }],
+        mode: { type: 'object-json' },
+      });
+
+      const chunks: any[] = [];
+      const reader = result.stream.getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      expect(chunks).toHaveLength(2);
+      // When JSON is malformed, extractJson returns the original text
+      expect(chunks[0]).toEqual({
+        type: 'text-delta',
+        textDelta: 'Here is the JSON: {"a": 1, "b": invalid}',
+      });
+      expect(chunks[1]).toMatchObject({
+        type: 'finish',
+        finishReason: 'stop',
+        usage: {
+          promptTokens: 8,
           completionTokens: 5,
         },
       });

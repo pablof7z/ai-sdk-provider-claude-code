@@ -94,7 +94,7 @@ describe('Error Creation Functions', () => {
       });
       
       expect(error.requestBodyValues).toBeUndefined();
-      expect(error.data.timeoutMs).toBe(60000);
+      expect((error.data as any).timeoutMs).toBe(60000);
     });
   });
 });
@@ -109,6 +109,8 @@ describe('Error Detection Functions', () => {
     it('should detect APICallError with exit code 401', () => {
       const error = new APICallError({
         message: 'Unauthorized',
+        url: 'test-url',
+        requestBodyValues: {},
         isRetryable: false,
         data: { exitCode: 401 }
       });
@@ -118,7 +120,9 @@ describe('Error Detection Functions', () => {
     it('should return false for other errors', () => {
       expect(isAuthenticationError(new Error('Generic error'))).toBe(false);
       expect(isAuthenticationError(new APICallError({ 
-        message: 'Not auth', 
+        message: 'Not auth',
+        url: 'test-url',
+        requestBodyValues: {},
         isRetryable: false,
         data: { exitCode: 1 }
       }))).toBe(false);
@@ -130,6 +134,8 @@ describe('Error Detection Functions', () => {
     it('should detect APICallError with TIMEOUT code', () => {
       const error = new APICallError({
         message: 'Timeout',
+        url: 'test-url',
+        requestBodyValues: {},
         isRetryable: true,
         data: { code: 'TIMEOUT' }
       });
@@ -140,6 +146,8 @@ describe('Error Detection Functions', () => {
       expect(isTimeoutError(new Error('Not timeout'))).toBe(false);
       expect(isTimeoutError(new APICallError({ 
         message: 'Other error',
+        url: 'test-url',
+        requestBodyValues: {},
         isRetryable: false,
         data: { code: 'OTHER' }
       }))).toBe(false);
@@ -152,6 +160,8 @@ describe('getErrorMetadata', () => {
   it('should extract metadata from APICallError', () => {
     const error = new APICallError({
       message: 'API call failed',
+      url: 'test-url',
+      requestBodyValues: {},
       isRetryable: false,
       data: {
         exitCode: 1,
@@ -182,6 +192,8 @@ describe('getErrorMetadata', () => {
   it('should handle APICallError without data', () => {
     const error = new APICallError({
       message: 'API call failed',
+      url: 'test-url',
+      requestBodyValues: {},
       isRetryable: false
     });
     

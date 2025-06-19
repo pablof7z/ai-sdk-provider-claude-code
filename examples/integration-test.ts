@@ -135,7 +135,7 @@ async function testErrorHandling() {
 async function testStreaming() {
   console.log('\n🧪 Test 5: Basic streaming...');
   try {
-    const { textStream } = await streamText({
+    const { textStream } = streamText({
       model: claudeCode('sonnet'),
       prompt: 'Count from 1 to 5, one number per line.',
     });
@@ -210,4 +210,7 @@ setTimeout(() => {
   process.exit(1);
 }, 60000);
 
-runAllTests();
+runAllTests().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});

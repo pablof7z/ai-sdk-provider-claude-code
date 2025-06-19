@@ -55,7 +55,7 @@ async function main() {
     // Cancel immediately
     controller.abort();
 
-    const { text } = await generateText({
+    await generateText({
       model: claudeCode('opus'),
       prompt: 'This should not execute',
       abortSignal: controller.signal,
@@ -75,7 +75,7 @@ async function main() {
     const controller = new AbortController();
     let charCount = 0;
 
-    const { textStream } = await streamText({
+    const { textStream } = streamText({
       model: claudeCode('sonnet'),
       prompt: 'Count slowly from 1 to 20, explaining each number.',
       abortSignal: controller.signal,
