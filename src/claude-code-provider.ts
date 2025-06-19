@@ -3,6 +3,7 @@ import { NoSuchModelError } from '@ai-sdk/provider';
 import { ClaudeCodeLanguageModel, type ClaudeCodeModelId } from './claude-code-language-model.js';
 import type { ClaudeCodeSettings } from './types.js';
 import { validateSettings } from './validation.js';
+import { getLogger } from './logger.js';
 
 /**
  * Claude Code provider interface that extends the AI SDK's ProviderV1.
@@ -100,6 +101,9 @@ export interface ClaudeCodeProviderSettings {
 export function createClaudeCode(
   options: ClaudeCodeProviderSettings = {},
 ): ClaudeCodeProvider {
+  // Get logger from default settings if provided
+  const logger = getLogger(options.defaultSettings?.logger);
+  
   // Validate default settings if provided
   if (options.defaultSettings) {
     const validation = validateSettings(options.defaultSettings);
@@ -107,7 +111,7 @@ export function createClaudeCode(
       throw new Error(`Invalid default settings: ${validation.errors.join(', ')}`);
     }
     if (validation.warnings.length > 0) {
-      validation.warnings.forEach(warning => console.warn(`Claude Code Provider: ${warning}`));
+      validation.warnings.forEach(warning => logger.warn(`Claude Code Provider: ${warning}`));
     }
   }
 

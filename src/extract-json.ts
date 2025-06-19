@@ -58,8 +58,65 @@ export function extractJson(text: string): string {
     return parsed;
   }
 
-  // If parsing the full string failed, progressively truncate until valid
-  for (let end = content.length - 1; end > 0; end--) {
+  // If parsing the full string failed, use a more efficient approach
+  // to find valid JSON boundaries
+  const openChar = content[0];
+  const closeChar = openChar === '{' ? '}' : ']';
+  
+  // Find all potential closing positions by tracking nesting depth
+  const closingPositions: number[] = [];
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"' && !inString) {
+      inString = true;
+      continue;
+    }
+    
+    if (char === '"' && inString) {
+      inString = false;
+      continue;
+    }
+    
+    // Skip content inside strings
+    if (inString) continue;
+    
+    if (char === openChar) {
+      depth++;
+    } else if (char === closeChar) {
+      depth--;
+      if (depth === 0) {
+        closingPositions.push(i + 1);
+      }
+    }
+  }
+  
+  // Try parsing at each valid closing position, starting from the end
+  for (let i = closingPositions.length - 1; i >= 0; i--) {
+    const attempt = tryParse(content.slice(0, closingPositions[i]));
+    if (attempt !== undefined) {
+      return attempt;
+    }
+  }
+  
+  // As a final fallback, try the original character-by-character approach
+  // but only for the last 1000 characters to limit performance impact
+  const searchStart = Math.max(0, content.length - 1000);
+  for (let end = content.length - 1; end > searchStart; end--) {
     const attempt = tryParse(content.slice(0, end));
     if (attempt !== undefined) {
       return attempt;

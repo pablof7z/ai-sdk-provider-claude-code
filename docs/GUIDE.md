@@ -188,6 +188,44 @@ const { text } = await generateText({
 });
 ```
 
+### Logging Configuration
+
+Control how warnings and errors are logged:
+
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+// Default: logs to console
+const defaultClaude = createClaudeCode();
+
+// Disable all logging
+const silentClaude = createClaudeCode({
+  defaultSettings: {
+    logger: false
+  }
+});
+
+// Custom logger
+const customClaude = createClaudeCode({
+  defaultSettings: {
+    logger: {
+      warn: (message) => myLogger.warn('Claude:', message),
+      error: (message) => myLogger.error('Claude:', message),
+    }
+  }
+});
+
+// Model-specific logger override
+const model = customClaude('opus', {
+  logger: false // Disable logging for this model only
+});
+```
+
+Logger options:
+- `undefined` (default): Uses `console.warn` and `console.error`
+- `false`: Disables all logging
+- Custom `Logger` object: Must implement `warn` and `error` methods
+
 ### Tool Management
 
 Control which tools Claude Code can use with either `allowedTools` (allowlist) or `disallowedTools` (denylist). These flags work for **both built-in Claude tools and MCP tools**, providing session-only permission overrides.
@@ -743,34 +781,51 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common issues incl
 
 ```
 ai-sdk-provider-claude-code/
-├── src/
+├── src/                               # Source code
 │   ├── index.ts                       # Main exports
 │   ├── claude-code-provider.ts        # Provider factory
 │   ├── claude-code-language-model.ts  # AI SDK implementation using SDK
 │   ├── convert-to-claude-code-messages.ts # Message format converter
 │   ├── extract-json.ts                # JSON extraction for object generation
 │   ├── errors.ts                      # Error handling utilities
-│   └── types.ts                       # TypeScript types and interfaces
-├── examples/
+│   ├── logger.ts                      # Configurable logger support
+│   ├── map-claude-code-finish-reason.ts # Finish reason mapping utilities
+│   ├── types.ts                       # TypeScript types and interfaces
+│   ├── validation.ts                  # Input validation utilities
+│   ├── *.test.ts                      # Test files for each module
+│   └── logger.integration.test.ts     # Logger integration tests
+├── examples/                          # Example usage scripts
 │   ├── README.md                      # Examples documentation
+│   ├── abort-signal.ts                # Request cancellation examples
 │   ├── basic-usage.ts                 # Simple text generation with metadata
-│   ├── streaming.ts                   # Streaming response demo
-│   ├── custom-config.ts               # Provider configuration options
-│   ├── long-running-tasks.ts          # Timeout handling with AbortSignal
+│   ├── check-cli.ts                   # CLI installation verification
 │   ├── conversation-history.ts        # Multi-turn conversation with message history
+│   ├── custom-config.ts               # Provider configuration options
 │   ├── generate-object.ts             # Original object generation example
 │   ├── generate-object-basic.ts       # Basic object generation patterns
-│   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── generate-object-constraints.ts # Validation and constraints
-│   ├── tool-management.ts             # Tool access control (allow/disallow)
-│   ├── test-session.ts                # Session management testing
-│   ├── abort-signal.ts                # Request cancellation examples
-│   ├── limitations.ts                 # Provider limitations demo
+│   ├── generate-object-nested.ts      # Complex nested structures
 │   ├── integration-test.ts            # Comprehensive integration tests
-│   └── check-cli.ts                   # CLI installation verification
-├── package.json
-├── tsconfig.json
-└── LICENSE
+│   ├── limitations.ts                 # Provider limitations demo
+│   ├── long-running-tasks.ts          # Timeout handling with AbortSignal
+│   ├── streaming.ts                   # Streaming response demo
+│   ├── test-session.ts                # Session management testing
+│   └── tool-management.ts             # Tool access control (allow/disallow)
+├── docs/                              # Documentation
+│   ├── GUIDE.md                       # Comprehensive guide (this file)
+│   ├── DEVELOPMENT-STATUS.md          # Development status and roadmap
+│   └── TROUBLESHOOTING.md             # Common issues and solutions
+├── CHANGELOG.md                       # Version history
+├── CODE_REVIEW_PLAN.md                # Development planning documentation
+├── LICENSE                            # MIT License
+├── README.md                          # Main project documentation
+├── eslint.config.js                   # ESLint configuration
+├── package.json                       # Project metadata and dependencies
+├── package-lock.json                  # Dependency lock file
+├── run-all-examples.sh                # Script to run all examples
+├── tsconfig.json                      # TypeScript configuration
+├── tsup.config.ts                     # Build configuration
+└── vitest.config.ts                   # Test runner configuration
 ```
 
 ## Known Limitations

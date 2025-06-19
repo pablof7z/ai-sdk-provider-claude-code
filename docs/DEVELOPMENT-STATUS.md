@@ -219,4 +219,3 @@ const { text } = await generateText({
   for tool functionality, and Claude can use built-in tools (Bash, Read, Write, etc.) through 
   the Claude Code CLI.
 </Note>
-```

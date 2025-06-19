@@ -7,12 +7,13 @@ import type {
 } from '@ai-sdk/provider';
 import { NoSuchModelError, APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
-import type { ClaudeCodeSettings } from './types.js';
+import type { ClaudeCodeSettings, Logger } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
 import { extractJson } from './extract-json.js';
 import { createAPICallError, createAuthenticationError, createTimeoutError } from './errors.js';
 import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
 import { validateModelId, validatePrompt, validateSessionId } from './validation.js';
+import { getLogger } from './logger.js';
 
 import { query, AbortError, type Options } from '@anthropic-ai/claude-code';
 
@@ -110,11 +111,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   private sessionId?: string;
   private modelValidationWarning?: string;
   private settingsValidationWarnings: string[];
+  private logger: Logger;
 
   constructor(options: ClaudeCodeLanguageModelOptions) {
     this.modelId = options.id;
     this.settings = options.settings ?? {};
     this.settingsValidationWarnings = options.settingsValidationWarnings ?? [];
+    this.logger = getLogger(this.settings.logger);
     
     // Validate model ID format
     if (!this.modelId || typeof this.modelId !== 'string' || this.modelId.trim() === '') {
@@ -127,7 +130,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     // Additional model ID validation
     this.modelValidationWarning = validateModelId(this.modelId);
     if (this.modelValidationWarning) {
-      console.warn(`Claude Code Model: ${this.modelValidationWarning}`);
+      this.logger.warn(`Claude Code Model: ${this.modelValidationWarning}`);
     }
   }
 
@@ -277,7 +280,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
           ? error.message 
           : 'Request timed out',
         promptExcerpt: messagesPrompt.substring(0, 200),
-        timeoutMs: 120000, // Default timeout, could be made configurable
+        // Don't specify timeoutMs since we don't know the actual timeout value
+        // It's controlled by the consumer via AbortSignal
       });
     }
 
@@ -305,7 +309,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     this.sessionId = sessionId;
     const warning = validateSessionId(sessionId);
     if (warning) {
-      console.warn(`Claude Code Session: ${warning}`);
+      this.logger.warn(`Claude Code Session: ${warning}`);
     }
   }
 
@@ -342,7 +346,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   async doGenerate(
     options: Parameters<LanguageModelV1['doGenerate']>[0],
   ): Promise<Awaited<ReturnType<LanguageModelV1['doGenerate']>>> {
-    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
+    const { messagesPrompt, warnings: messageWarnings } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
     let abortListener: (() => void) | undefined;
@@ -360,6 +364,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     let durationMs: number | undefined;
     let rawUsage: unknown | undefined;
     const warnings: LanguageModelV1CallWarning[] = this.generateAllWarnings(options, messagesPrompt);
+    
+    // Add warnings from message conversion
+    if (messageWarnings) {
+      messageWarnings.forEach(warning => {
+        warnings.push({
+          type: 'other',
+          message: warning,
+        });
+      });
+    }
 
     try {
       const response = query({
@@ -449,7 +463,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
   async doStream(
     options: Parameters<LanguageModelV1['doStream']>[0],
   ): Promise<Awaited<ReturnType<LanguageModelV1['doStream']>>> {
-    const { messagesPrompt } = convertToClaudeCodeMessages(options.prompt, options.mode);
+    const { messagesPrompt, warnings: messageWarnings } = convertToClaudeCodeMessages(options.prompt, options.mode);
 
     const abortController = new AbortController();
     let abortListener: (() => void) | undefined;
@@ -461,6 +475,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     const queryOptions = this.createQueryOptions(abortController);
 
     const warnings: LanguageModelV1CallWarning[] = this.generateAllWarnings(options, messagesPrompt);
+    
+    // Add warnings from message conversion
+    if (messageWarnings) {
+      messageWarnings.forEach(warning => {
+        warnings.push({
+          type: 'other',
+          message: warning,
+        });
+      });
+    }
 
     const stream = new ReadableStream<LanguageModelV1StreamPart>({
       start: async (controller) => {

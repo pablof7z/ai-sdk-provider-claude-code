@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-06-19
+
+### Added
+- Configurable logger support with options to disable or customize warning/error output
+- Integration tests for logger functionality
+- Extended thinking support for Claude Opus 4 with examples
+
+### Changed
+- Improved JSON extraction algorithm for better performance and reliability
+- JSON extraction now handles truncated JSON and missing closing braces
+- Consolidated test structure - moved integration tests to `src/` directory
+- Updated documentation to reflect accurate project structure
+- Enhanced error messages for better debugging
+
+### Fixed
+- Resolved all ESLint errors and removed unused imports
+- Fixed edge runtime compatibility issues with conditional fs imports
+- Fixed error handling to properly use AI SDK error types
+- Fixed validation to skip directory checks in non-Node environments
+
+### Performance
+- Optimized JSON extraction with early termination for invalid JSON
+- Reduced JSON parsing overhead for large responses
+- Improved streaming performance for object generation
+
 ## [0.1.0] - 2025-06-15
 
 ### Added
