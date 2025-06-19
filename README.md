@@ -14,8 +14,7 @@ claude login
 
 ### 2. Add the provider
 ```bash
-npm install git+https://github.com/ben-vargas/ai-sdk-provider-claude-code.git
-npm install ai
+npm install ai-sdk-provider-claude-code ai
 ```
 
 ## Disclaimer
