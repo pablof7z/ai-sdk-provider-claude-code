@@ -1,7 +1,7 @@
 import type { LanguageModelV1, ProviderV1 } from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { ClaudeCodeLanguageModel, type ClaudeCodeModelId } from './claude-code-language-model.js';
-import type { ClaudeCodeSettings, Logger } from './types.js';
+import type { ClaudeCodeSettings } from './types.js';
 import { validateSettings } from './validation.js';
 import { getLogger } from './logger.js';
 

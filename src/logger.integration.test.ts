@@ -24,7 +24,7 @@ describe('logger integration', () => {
 
   describe('createClaudeCode with logger settings', () => {
     it('should use console logger by default', () => {
-      const provider = createClaudeCode({
+      createClaudeCode({
         defaultSettings: {
           maxTurns: 99, // High value to trigger warning
         },
@@ -36,7 +36,7 @@ describe('logger integration', () => {
     });
 
     it('should respect logger: false setting', () => {
-      const provider = createClaudeCode({
+      createClaudeCode({
         defaultSettings: {
           logger: false,
           maxTurns: 99, // High value that would normally trigger warning
@@ -52,7 +52,7 @@ describe('logger integration', () => {
         error: vi.fn(),
       };
 
-      const provider = createClaudeCode({
+      createClaudeCode({
         defaultSettings: {
           logger: customLogger,
           maxTurns: 99, // High value to trigger warning
@@ -78,7 +78,7 @@ describe('logger integration', () => {
       });
 
       // Create a model with an unknown ID to trigger warning
-      const model = provider('unknown-model-id');
+      provider('unknown-model-id');
 
       expect(customLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Unknown model ID')
@@ -103,7 +103,7 @@ describe('logger integration', () => {
       });
 
       // Create a model with its own logger
-      const model = provider('unknown-model', {
+      provider('unknown-model', {
         logger: modelLogger,
       });
 
@@ -125,7 +125,7 @@ describe('logger integration', () => {
         },
       });
 
-      const model = provider('opus');
+      provider('opus');
 
       // Mock the query function to prevent actual API calls
       const { ClaudeCodeLanguageModel } = await import('../src/claude-code-language-model.js');

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { existsSync } from 'fs';
-import type { Logger } from './types.js';
 
 /**
  * Validation schemas and utilities for Claude Code provider inputs.
