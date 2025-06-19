@@ -78,7 +78,7 @@ async function main() {
   // 5. Streaming with unsupported parameters
   console.log('5. Streaming with ignored parameters:');
   try {
-    const { textStream } = await streamText({
+    const { textStream } = streamText({
       model: claudeCode('opus'),
       prompt: 'Count to 3',
       temperature: 0,  // ❌ Still ignored in streaming mode

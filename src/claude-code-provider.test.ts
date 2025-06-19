@@ -60,9 +60,9 @@ describe('createClaudeCode', () => {
     
     expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
     // Model settings should override provider settings
-    expect(model.settings.maxTurns).toBe(10);
-    expect(model.settings.customSystemPrompt).toBe('Model prompt');
-    expect(model.settings.pathToClaudeCodeExecutable).toBe('/provider/path');
+    expect((model as ClaudeCodeLanguageModel).settings.maxTurns).toBe(10);
+    expect((model as ClaudeCodeLanguageModel).settings.customSystemPrompt).toBe('Model prompt');
+    expect((model as ClaudeCodeLanguageModel).settings.pathToClaudeCodeExecutable).toBe('/provider/path');
   });
 
   it('should create model with custom settings', () => {
@@ -70,7 +70,7 @@ describe('createClaudeCode', () => {
     const model = provider('sonnet', { resume: 'test-session-123' });
     
     expect(model).toBeInstanceOf(ClaudeCodeLanguageModel);
-    expect(model.settings.resume).toBe('test-session-123');
+    expect((model as ClaudeCodeLanguageModel).settings.resume).toBe('test-session-123');
   });
 
   it('should work with destructured usage', () => {

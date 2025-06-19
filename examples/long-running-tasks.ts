@@ -28,7 +28,7 @@ async function withTimeout() {
 
     clearTimeout(timeoutId); // Clear timeout on success
     console.log('Response:', text);
-  } catch (error) {
+  } catch (error: any) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError' || error.message?.includes('timeout')) {
@@ -61,7 +61,7 @@ async function withUserCancellation() {
     });
 
     console.log('Response:', text);
-  } catch (error) {
+  } catch (error: any) {
     if (error.name === 'AbortError' || error.message?.includes('cancelled')) {
       console.log('✅ Request successfully cancelled by user');
     } else {
@@ -86,7 +86,7 @@ async function withGracefulTimeout() {
 
       clearTimeout(timeoutId);
       return { success: true, text };
-    } catch (error) {
+    } catch (error: any) {
       clearTimeout(timeoutId);
       
       if (error.name === 'AbortError') {
@@ -141,7 +141,7 @@ async function withHelper() {
 
     (controller as any).clearTimeout();
     console.log('Analysis complete:', text);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Analysis failed:', error.message);
   }
 }

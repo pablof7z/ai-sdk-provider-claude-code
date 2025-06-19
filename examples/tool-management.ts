@@ -34,7 +34,9 @@ async function testToolManagement() {
   console.log('\n2️⃣  Built-in tools: Allow only Bash commands');
   // 2. Allow only specific Bash commands
   const bashOnlyClaude = createClaudeCode({
-    allowedTools: ['Bash(echo:*)', 'Bash(date)', 'Bash(pwd)'],
+    defaultSettings: {
+      allowedTools: ['Bash(echo:*)', 'Bash(date)', 'Bash(pwd)'],
+    }
   });
 
   try {
@@ -51,7 +53,9 @@ async function testToolManagement() {
   console.log('\n3️⃣  Built-in tools: Block dangerous operations');
   // 3. Block file modifications but allow reading
   const readOnlyClaude = createClaudeCode({
-    disallowedTools: ['Write', 'Edit', 'Delete', 'Bash(rm:*)', 'Bash(sudo:*)'],
+    defaultSettings: {
+      disallowedTools: ['Write', 'Edit', 'Delete', 'Bash(rm:*)', 'Bash(sudo:*)'],
+    }
   });
 
   try {
@@ -68,14 +72,16 @@ async function testToolManagement() {
   console.log('\n4️⃣  Mixed: Built-in tools + MCP tools');
   // 4. Allow specific built-in tools and MCP tools
   const mixedClaude = createClaudeCode({
-    allowedTools: [
-      'Read',
-      'LS',
-      'Bash(git log:*)',
-      'Bash(git status)',
-      'mcp__filesystem__read_file',
-      'mcp__git__status'
-    ],
+    defaultSettings: {
+      allowedTools: [
+        'Read',
+        'LS',
+        'Bash(git log:*)',
+        'Bash(git status)',
+        'mcp__filesystem__read_file',
+        'mcp__git__status'
+      ],
+    }
   });
 
   try {
@@ -92,7 +98,9 @@ async function testToolManagement() {
   console.log('\n5️⃣  Security lockdown: No tools at all');
   // 5. Maximum security - explicit empty allowlist blocks all tools
   const noToolsClaude = createClaudeCode({
-    allowedTools: [], // Empty array = explicit empty allowlist = NO tools allowed
+    defaultSettings: {
+      allowedTools: [], // Empty array = explicit empty allowlist = NO tools allowed
+    }
   });
 
   try {
@@ -109,7 +117,9 @@ async function testToolManagement() {
   console.log('\n6️⃣  Model-specific override');
   // 6. Model-specific settings override provider settings
   const baseClaude = createClaudeCode({
-    disallowedTools: ['Bash', 'Write'], // Provider blocks these
+    defaultSettings: {
+      disallowedTools: ['Bash', 'Write'], // Provider blocks these
+    }
   });
 
   try {

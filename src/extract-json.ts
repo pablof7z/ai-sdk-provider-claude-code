@@ -9,7 +9,7 @@
  * @param text - Raw text which may contain JSON
  * @returns A valid JSON string if extraction succeeds, otherwise the original text
  */
-import { parse } from 'jsonc-parser';
+import { parse, type ParseError } from 'jsonc-parser';
 
 export function extractJson(text: string): string {
   let content = text.trim();
@@ -41,7 +41,7 @@ export function extractJson(text: string): string {
 
   // Try to parse the entire string with jsonc-parser
   const tryParse = (value: string): string | undefined => {
-    const errors: unknown[] = [];
+    const errors: ParseError[] = [];
     try {
       const result = parse(value, errors, { allowTrailingComma: true });
       if (errors.length === 0) {

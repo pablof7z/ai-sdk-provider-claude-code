@@ -63,10 +63,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [{ role: 'user', content: 'Say hello' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
         mode: { type: 'regular' },
       });
 
@@ -99,10 +100,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [{ role: 'user', content: 'Complex task' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Complex task' }] }],
         mode: { type: 'regular' },
       });
 
@@ -122,7 +124,8 @@ describe('ClaudeCodeLanguageModel', () => {
       abortController.abort(abortReason);
 
       const promise = model.doGenerate({
-        prompt: [{ role: 'user', content: 'Test abort' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test abort' }] }],
         mode: { type: 'regular' },
         abortSignal: abortController.signal,
       });
@@ -162,10 +165,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [{ role: 'user', content: 'Say hello' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
         mode: { type: 'regular' },
       });
 
@@ -226,10 +230,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [{ role: 'user', content: 'Return JSON' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return JSON' }] }],
         mode: { type: 'object-json' },
         temperature: 0.5, // This will trigger a warning
       });
@@ -298,10 +303,11 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       };
 
-      vi.mocked(mockQuery).mockReturnValue(mockResponse);
+      vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [{ role: 'user', content: 'Return invalid JSON' }],
+        inputFormat: 'messages',
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return invalid JSON' }] }],
         mode: { type: 'object-json' },
       });
 
