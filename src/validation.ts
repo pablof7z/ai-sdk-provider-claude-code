@@ -22,13 +22,27 @@ export const claudeCodeSettingsSchema = z.object({
   ).optional(),
   executable: z.enum(['bun', 'deno', 'node']).optional(),
   executableArgs: z.array(z.string()).optional(),
-  permissionMode: z.any().optional(), // SDK validates this
+  permissionMode: z.enum(['default', 'acceptEdits', 'bypassPermissions', 'plan']).optional(),
   permissionPromptToolName: z.string().optional(),
   continue: z.boolean().optional(),
   resume: z.string().optional(),
   allowedTools: z.array(z.string()).optional(),
   disallowedTools: z.array(z.string()).optional(),
-  mcpServers: z.any().optional(), // SDK validates this
+  mcpServers: z.record(z.string(), z.union([
+    // McpStdioServerConfig
+    z.object({
+      type: z.literal('stdio').optional(),
+      command: z.string(),
+      args: z.array(z.string()).optional(),
+      env: z.record(z.string()).optional()
+    }),
+    // McpSSEServerConfig
+    z.object({
+      type: z.literal('sse'),
+      url: z.string(),
+      headers: z.record(z.string()).optional()
+    })
+  ])).optional(),
   verbose: z.boolean().optional(),
 }).strict();
 

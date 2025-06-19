@@ -177,6 +177,82 @@ describe('validateSettings', () => {
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('Validation error: FS error');
   });
+
+  it('should validate permissionMode values', () => {
+    // Valid permission modes
+    const validModes = ['default', 'acceptEdits', 'bypassPermissions', 'plan'];
+    validModes.forEach(mode => {
+      const result = validateSettings({ permissionMode: mode });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    // Invalid permission mode
+    const invalidResult = validateSettings({ permissionMode: 'invalid' });
+    expect(invalidResult.valid).toBe(false);
+    expect(invalidResult.errors[0]).toContain('permissionMode');
+  });
+
+  it('should validate mcpServers configuration', () => {
+    // Valid stdio server
+    const validStdio = {
+      mcpServers: {
+        filesystem: {
+          command: 'npx',
+          args: ['@modelcontextprotocol/server-filesystem'],
+          env: { PATH: '/usr/bin' }
+        }
+      }
+    };
+    expect(validateSettings(validStdio).valid).toBe(true);
+
+    // Valid stdio server without optional type field
+    const validStdioNoType = {
+      mcpServers: {
+        filesystem: {
+          command: 'npx'
+        }
+      }
+    };
+    expect(validateSettings(validStdioNoType).valid).toBe(true);
+
+    // Valid SSE server
+    const validSSE = {
+      mcpServers: {
+        apiServer: {
+          type: 'sse',
+          url: 'https://example.com/sse',
+          headers: { 'Authorization': 'Bearer token' }
+        }
+      }
+    };
+    expect(validateSettings(validSSE).valid).toBe(true);
+
+    // Invalid - missing required fields
+    const invalidMissingCommand = {
+      mcpServers: {
+        invalid: {
+          args: ['test']
+        }
+      }
+    };
+    const result1 = validateSettings(invalidMissingCommand);
+    expect(result1.valid).toBe(false);
+    expect(result1.errors[0]).toContain('mcpServers');
+
+    // Invalid - SSE missing url
+    const invalidSSEMissingUrl = {
+      mcpServers: {
+        invalid: {
+          type: 'sse',
+          headers: { 'test': 'value' }
+        }
+      }
+    };
+    const result2 = validateSettings(invalidSSEMissingUrl);
+    expect(result2.valid).toBe(false);
+    expect(result2.errors[0]).toContain('mcpServers');
+  });
 });
 
 describe('validatePrompt', () => {
