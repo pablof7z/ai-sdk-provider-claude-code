@@ -188,6 +188,44 @@ const { text } = await generateText({
 });
 ```
 
+### Logging Configuration
+
+Control how warnings and errors are logged:
+
+```typescript
+import { createClaudeCode } from 'ai-sdk-provider-claude-code';
+
+// Default: logs to console
+const defaultClaude = createClaudeCode();
+
+// Disable all logging
+const silentClaude = createClaudeCode({
+  defaultSettings: {
+    logger: false
+  }
+});
+
+// Custom logger
+const customClaude = createClaudeCode({
+  defaultSettings: {
+    logger: {
+      warn: (message) => myLogger.warn('Claude:', message),
+      error: (message) => myLogger.error('Claude:', message),
+    }
+  }
+});
+
+// Model-specific logger override
+const model = customClaude('opus', {
+  logger: false // Disable logging for this model only
+});
+```
+
+Logger options:
+- `undefined` (default): Uses `console.warn` and `console.error`
+- `false`: Disables all logging
+- Custom `Logger` object: Must implement `warn` and `error` methods
+
 ### Tool Management
 
 Control which tools Claude Code can use with either `allowedTools` (allowlist) or `disallowedTools` (denylist). These flags work for **both built-in Claude tools and MCP tools**, providing session-only permission overrides.

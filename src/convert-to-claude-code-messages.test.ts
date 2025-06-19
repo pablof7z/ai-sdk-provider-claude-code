@@ -56,9 +56,7 @@ describe('convertToClaudeCodeMessages', () => {
     expect(result.messagesPrompt).toBe('Human: Hello\n, \nworld!');
   });
 
-  it('should warn for image content but not throw', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+  it('should return warning for image content but not throw', () => {
     const result = convertToClaudeCodeMessages([
       {
         role: 'user',
@@ -69,9 +67,9 @@ describe('convertToClaudeCodeMessages', () => {
       }
     ]);
     
-    expect(warnSpy).toHaveBeenCalledWith('Claude Code CLI does not support image inputs. Images will be ignored.');
+    expect(result.warnings).toBeDefined();
+    expect(result.warnings).toContain('Claude Code CLI does not support image inputs. Images will be ignored.');
     expect(result.messagesPrompt).toBe('Human: Look at this:');
-    warnSpy.mockRestore();
   });
 
   it('should handle unknown content types gracefully', () => {

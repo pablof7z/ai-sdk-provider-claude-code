@@ -2,6 +2,31 @@
 import type { PermissionMode, McpServerConfig } from '@anthropic-ai/claude-code';
 
 /**
+ * Logger interface for custom logging.
+ * Allows consumers to provide their own logging implementation
+ * or disable logging entirely.
+ * 
+ * @example
+ * ```typescript
+ * const customLogger: Logger = {
+ *   warn: (message) => myLoggingService.warn(message),
+ *   error: (message) => myLoggingService.error(message),
+ * };
+ * ```
+ */
+export interface Logger {
+  /**
+   * Log a warning message.
+   */
+  warn: (message: string) => void;
+  
+  /**
+   * Log an error message.
+   */
+  error: (message: string) => void;
+}
+
+/**
  * Configuration settings for Claude Code CLI behavior.
  * These settings control how the CLI executes, what permissions it has,
  * and which tools are available during conversations.
@@ -102,4 +127,27 @@ export interface ClaudeCodeSettings {
    * Enable verbose logging for debugging
    */
   verbose?: boolean;
+
+  /**
+   * Custom logger for handling warnings and errors.
+   * - Set to `false` to disable all logging
+   * - Provide a Logger object to use custom logging
+   * - Leave undefined to use console (default)
+   * 
+   * @default console
+   * @example
+   * ```typescript
+   * // Disable logging
+   * const settings = { logger: false };
+   * 
+   * // Custom logger
+   * const settings = {
+   *   logger: {
+   *     warn: (msg) => myLogger.warn(msg),
+   *     error: (msg) => myLogger.error(msg),
+   *   }
+   * };
+   * ```
+   */
+  logger?: Logger | false;
 }

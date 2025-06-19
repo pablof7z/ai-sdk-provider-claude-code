@@ -27,8 +27,10 @@ export function convertToClaudeCodeMessages(
 ): {
   messagesPrompt: string;
   systemPrompt?: string;
+  warnings?: string[];
 } {
   const messages: string[] = [];
+  const warnings: string[] = [];
   let systemPrompt: string | undefined;
 
   for (const message of prompt) {
@@ -54,7 +56,7 @@ export function convertToClaudeCodeMessages(
           // Note: Image parts are not supported by Claude Code CLI
           const imageParts = message.content.filter(part => part.type === 'image');
           if (imageParts.length > 0) {
-            console.warn('Claude Code CLI does not support image inputs. Images will be ignored.');
+            warnings.push('Claude Code CLI does not support image inputs. Images will be ignored.');
           }
         }
         break;
@@ -143,5 +145,6 @@ Begin your response with { and end with }`;
   return {
     messagesPrompt: finalPrompt,
     systemPrompt,
+    ...(warnings.length > 0 && { warnings }),
   };
 }

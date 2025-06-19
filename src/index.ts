@@ -34,7 +34,7 @@ export type { ClaudeCodeModelId, ClaudeCodeLanguageModelOptions } from './claude
  * Settings for configuring Claude Code behavior.
  * Includes options for customizing the CLI execution, permissions, and tool usage.
  */
-export type { ClaudeCodeSettings } from './types.js';
+export type { ClaudeCodeSettings, Logger } from './types.js';
 
 /**
  * Error handling utilities for Claude Code.

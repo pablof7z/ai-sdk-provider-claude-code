@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { existsSync } from 'fs';
+import type { Logger } from './types.js';
 
 /**
  * Validation schemas and utilities for Claude Code provider inputs.
@@ -50,6 +51,13 @@ export const claudeCodeSettingsSchema = z.object({
     })
   ])).optional(),
   verbose: z.boolean().optional(),
+  logger: z.union([
+    z.literal(false),
+    z.object({
+      warn: z.function().args(z.string()).returns(z.void()),
+      error: z.function().args(z.string()).returns(z.void())
+    })
+  ]).optional(),
 }).strict();
 
 /**
