@@ -15,7 +15,7 @@ examples=(
   "generate-object-constraints"
   "generate-object"
   "tool-management"
-  "timeout-config"
+  "long-running-tasks"
   "abort-signal"
   "check-cli"
   "test-session"
