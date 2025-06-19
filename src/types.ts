@@ -1,4 +1,22 @@
-// Provider settings
+// Import types from the SDK
+import type { PermissionMode, McpServerConfig } from '@anthropic-ai/claude-code';
+
+/**
+ * Configuration settings for Claude Code CLI behavior.
+ * These settings control how the CLI executes, what permissions it has,
+ * and which tools are available during conversations.
+ * 
+ * @example
+ * ```typescript
+ * const settings: ClaudeCodeSettings = {
+ *   maxTurns: 10,
+ *   permissionMode: 'auto',
+ *   cwd: '/path/to/project',
+ *   allowedTools: ['Read', 'LS'],
+ *   disallowedTools: ['Bash(rm:*)']
+ * };
+ * ```
+ */
 export interface ClaudeCodeSettings {
   /**
    * Custom path to Claude Code CLI executable
@@ -46,7 +64,7 @@ export interface ClaudeCodeSettings {
    * Permission mode for tool usage
    * @default 'default'
    */
-  permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+  permissionMode?: PermissionMode;
 
   /**
    * Custom tool name for permission prompts
@@ -78,16 +96,7 @@ export interface ClaudeCodeSettings {
   /**
    * MCP server configuration
    */
-  mcpServers?: Record<string, {
-    type?: 'stdio';
-    command: string;
-    args?: string[];
-    env?: Record<string, string>;
-  } | {
-    type: 'sse';
-    url: string;
-    headers?: Record<string, string>;
-  }>;
+  mcpServers?: Record<string, McpServerConfig>;
 
   /**
    * Enable verbose logging for debugging
