@@ -13,17 +13,17 @@ import { z } from 'zod';
 
 async function main() {
   console.log('🚧 Claude Code Provider Limitations\n');
-  console.log('This example demonstrates features that are NOT supported by the Claude Code CLI.\n');
+  console.log('This example demonstrates features that are NOT supported by the Claude Code SDK.\n');
 
   // 1. Parameters that are silently ignored
   console.log('1. Parameters that are silently ignored:');
-  console.log('   The following AI SDK parameters have no effect with Claude Code CLI:\n');
+  console.log('   The following AI SDK parameters have no effect with Claude Code SDK:\n');
   
   try {
     const { text, usage } = await generateText({
       model: claudeCode('sonnet'),
       prompt: 'Write exactly 5 words.',
-      // These parameters are part of the AI SDK spec but are ignored by Claude Code CLI
+      // These parameters are part of the AI SDK spec but are ignored by Claude Code SDK
       temperature: 0.1,        // ❌ Ignored - CLI doesn't support temperature control
       maxTokens: 10,          // ❌ Ignored - CLI doesn't support output length limits
       topP: 0.9,              // ❌ Ignored - CLI doesn't support nucleus sampling
@@ -67,12 +67,12 @@ async function main() {
 
   // 3. Tool/Function calling - not supported
   console.log('\n3. Tool/Function calling:');
-  console.log('   ❌ Not supported - Claude Code CLI has no function calling capability');
+  console.log('   ❌ Not supported - Claude Code SDK has no function calling capability');
   console.log('   ℹ️  While MCP servers can be configured, they cannot control output format\n');
 
   // 4. Image inputs - not supported
   console.log('4. Image inputs:');
-  console.log('   ❌ Not supported - Claude Code CLI cannot process images');
+  console.log('   ❌ Not supported - Claude Code SDK cannot process images');
   console.log('   ℹ️  The supportsImageUrls property is set to false\n');
 
   // 5. Streaming with unsupported parameters
@@ -110,7 +110,7 @@ async function main() {
   console.log('   - Only object-json mode is supported\n');
   
   console.log('4. For deterministic output:');
-  console.log('   - Not possible with Claude Code CLI');
+  console.log('   - Not possible with Claude Code SDK');
   console.log('   - Each request will produce different results\n');
   
   console.log('5. For function calling:');
@@ -118,7 +118,7 @@ async function main() {
   console.log('   - Parse Claude\'s response to determine actions\n');
 
   console.log('🔍 Why these limitations exist:');
-  console.log('- Claude Code CLI is designed for interactive coding assistance');
+  console.log('- Claude Code SDK/CLI is mainly designed for interactive coding assistance');
   console.log('- It lacks the API\'s fine-grained control parameters');
   console.log('- The provider accurately reflects what the CLI can do\n');
   

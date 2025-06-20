@@ -4,7 +4,7 @@ This directory contains curated examples demonstrating the most important featur
 
 ## Prerequisites
 
-1. Install and authenticate Claude Code CLI:
+1. Install and authenticate Claude Code SDK:
 ```bash
 npm install -g @anthropic-ai/claude-code
 claude login

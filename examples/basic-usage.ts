@@ -48,7 +48,7 @@ async function main() {
   } catch (error) {
     console.error('Error:', error);
     console.log('\n💡 Troubleshooting:');
-    console.log('1. Install Claude Code CLI: npm install -g @anthropic-ai/claude-code');
+    console.log('1. Install Claude Code SDK: npm install -g @anthropic-ai/claude-code');
     console.log('2. Authenticate: claude login');
     console.log('3. Run check-cli.ts to verify setup');
   }

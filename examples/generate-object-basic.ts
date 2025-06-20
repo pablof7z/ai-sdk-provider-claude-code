@@ -158,7 +158,7 @@ async function main() {
     console.log('- See generate-object-constraints.ts for validation examples');
   } catch (error) {
     console.error('❌ Error:', error);
-    console.log('\n💡 Tip: Make sure the Claude Code CLI is authenticated with: claude login');
+    console.log('\n💡 Tip: Make sure the Claude Code SDK is authenticated with: claude login');
   }
 }
 

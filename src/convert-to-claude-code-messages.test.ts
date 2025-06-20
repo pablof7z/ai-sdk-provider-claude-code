@@ -68,7 +68,7 @@ describe('convertToClaudeCodeMessages', () => {
     ]);
     
     expect(result.warnings).toBeDefined();
-    expect(result.warnings).toContain('Claude Code CLI does not support image inputs. Images will be ignored.');
+    expect(result.warnings).toContain('Claude Code SDK does not support image inputs. Images will be ignored.');
     expect(result.messagesPrompt).toBe('Human: Look at this:');
   });
 

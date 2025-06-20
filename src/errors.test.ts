@@ -65,7 +65,7 @@ describe('Error Creation Functions', () => {
         message: ''
       });
       
-      expect(error.message).toBe('Authentication failed. Please ensure Claude Code CLI is properly authenticated.');
+      expect(error.message).toBe('Authentication failed. Please ensure Claude Code SDK is properly authenticated.');
     });
   });
 

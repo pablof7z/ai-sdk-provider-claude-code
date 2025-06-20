@@ -71,9 +71,9 @@ const modelMap: Record<string, string> = {
 };
 
 /**
- * Language model implementation for Claude Code CLI.
+ * Language model implementation for Claude Code SDK.
  * This class implements the AI SDK's LanguageModelV1 interface to provide
- * integration with Claude models through the Claude Code CLI.
+ * integration with Claude models through the Claude Code SDK.
  * 
  * Features:
  * - Supports streaming and non-streaming generation
@@ -166,7 +166,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
         warnings.push({
           type: 'unsupported-setting',
           setting: param as 'temperature' | 'maxTokens' | 'topP' | 'topK' | 'presencePenalty' | 'frequencyPenalty' | 'stopSequences' | 'seed',
-          details: `Claude Code CLI does not support the ${param} parameter. It will be ignored.`,
+          details: `Claude Code SDK does not support the ${param} parameter. It will be ignored.`,
         });
       }
     }
@@ -265,7 +265,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
       return createAuthenticationError({
         message: isErrorWithMessage(error) && error.message 
           ? error.message 
-          : 'Authentication failed. Please ensure Claude Code CLI is properly authenticated.',
+          : 'Authentication failed. Please ensure Claude Code SDK is properly authenticated.',
       });
     }
 
@@ -294,7 +294,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV1 {
     return createAPICallError({
       message: isErrorWithMessage(error) && error.message 
         ? error.message 
-        : 'Claude Code CLI error',
+        : 'Claude Code SDK error',
       code: errorCode || undefined,
       exitCode: exitCode,
       stderr: isErrorWithCode(error) && typeof error.stderr === 'string' 

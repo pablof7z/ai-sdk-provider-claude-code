@@ -1,7 +1,7 @@
 import type { LanguageModelV1Prompt } from '@ai-sdk/provider';
 
 /**
- * Converts AI SDK prompt format to Claude Code CLI message format.
+ * Converts AI SDK prompt format to Claude Code SDK message format.
  * Handles system prompts, user messages, assistant responses, and tool interactions.
  * 
  * @param prompt - The AI SDK prompt containing messages
@@ -53,10 +53,10 @@ export function convertToClaudeCodeMessages(
             messages.push(textParts);
           }
           
-          // Note: Image parts are not supported by Claude Code CLI
+          // Note: Image parts are not supported by Claude Code SDK
           const imageParts = message.content.filter(part => part.type === 'image');
           if (imageParts.length > 0) {
-            warnings.push('Claude Code CLI does not support image inputs. Images will be ignored.');
+            warnings.push('Claude Code SDK does not support image inputs. Images will be ignored.');
           }
         }
         break;

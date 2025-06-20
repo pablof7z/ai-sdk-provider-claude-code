@@ -174,7 +174,7 @@ The Claude Code provider is available in the `ai-sdk-provider-claude-code` modul
 
 ### Prerequisites
 
-Install and authenticate the Claude Code CLI:
+Install and authenticate the Claude Code SDK:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
@@ -217,5 +217,5 @@ const { text } = await generateText({
   The provider uses the official Claude Code SDK. While the models support tool use, this provider 
   doesn't implement the AI SDK's tool calling interface. However, you can configure MCP servers 
   for tool functionality, and Claude can use built-in tools (Bash, Read, Write, etc.) through 
-  the Claude Code CLI.
+  the Claude Code SDK.
 </Note>

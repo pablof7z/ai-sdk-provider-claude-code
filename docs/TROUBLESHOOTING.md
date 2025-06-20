@@ -10,7 +10,7 @@ This guide documents common issues and solutions for the Claude Code AI SDK Prov
 
 **Solution**: 
 ```bash
-# Install Claude Code CLI globally
+# Install Claude Code SDK globally
 npm install -g @anthropic-ai/claude-code
 
 # Authenticate with your Claude account

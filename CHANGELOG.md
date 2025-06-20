@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.0] - 2025-06-08
 
 ### Initial Release
-- Initial implementation of AI SDK provider for Claude Code CLI
+- Initial implementation of AI SDK provider for Claude Code SDK
 - Support for Claude 4 Opus and Sonnet models
 - Text generation (streaming and non-streaming)
 - Basic object generation support

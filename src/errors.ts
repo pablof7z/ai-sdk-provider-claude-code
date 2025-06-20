@@ -1,7 +1,7 @@
 import { APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
 
 /**
- * Metadata associated with Claude Code CLI errors.
+ * Metadata associated with Claude Code SDK errors.
  * Provides additional context about command execution failures.
  */
 export interface ClaudeCodeErrorMetadata {
@@ -11,7 +11,7 @@ export interface ClaudeCodeErrorMetadata {
   code?: string;
   
   /**
-   * Exit code from the Claude Code CLI process.
+   * Exit code from the Claude Code SDK process.
    * Common codes:
    * - 401: Authentication error
    * - 1: General error
@@ -46,7 +46,7 @@ export interface ClaudeCodeErrorMetadata {
  * @example
  * ```typescript
  * throw createAPICallError({
- *   message: 'Claude Code CLI failed',
+ *   message: 'Claude Code SDK failed',
  *   code: 'ENOENT',
  *   isRetryable: true
  * });
@@ -80,7 +80,7 @@ export function createAPICallError({
 }
 
 /**
- * Creates an authentication error for Claude Code CLI login failures.
+ * Creates an authentication error for Claude Code SDK login failures.
  * 
  * @param options - Error configuration
  * @param options.message - Error message describing the authentication failure
@@ -99,12 +99,12 @@ export function createAuthenticationError({
   message: string;
 }): LoadAPIKeyError {
   return new LoadAPIKeyError({
-    message: message || 'Authentication failed. Please ensure Claude Code CLI is properly authenticated.',
+    message: message || 'Authentication failed. Please ensure Claude Code SDK is properly authenticated.',
   });
 }
 
 /**
- * Creates a timeout error for Claude Code CLI operations.
+ * Creates a timeout error for Claude Code SDK operations.
  * 
  * @param options - Timeout error details
  * @param options.message - Error message describing the timeout
@@ -157,7 +157,7 @@ export function createTimeoutError({
  *   await model.generate(...);
  * } catch (error) {
  *   if (isAuthenticationError(error)) {
- *     console.log('Please authenticate with Claude Code CLI');
+ *     console.log('Please authenticate with Claude Code SDK');
  *   }
  * }
  * ```

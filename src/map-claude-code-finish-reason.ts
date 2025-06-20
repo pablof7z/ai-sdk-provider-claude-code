@@ -1,9 +1,9 @@
 import type { LanguageModelV1FinishReason } from '@ai-sdk/provider';
 
 /**
- * Maps Claude Code CLI result subtypes to AI SDK finish reasons.
+ * Maps Claude Code SDK result subtypes to AI SDK finish reasons.
  * 
- * @param subtype - The result subtype from Claude Code CLI
+ * @param subtype - The result subtype from Claude Code SDK
  * @returns The corresponding AI SDK finish reason
  * 
  * @example

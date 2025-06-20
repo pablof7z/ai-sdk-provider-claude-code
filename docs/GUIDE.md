@@ -708,13 +708,13 @@ Review our examples for implementation patterns
 
 ## Limitations
 
-- **No image support**: The Claude Code CLI doesn't support image inputs (provider sets `supportsImageUrls = false`)
+- **No image support**: The Claude Code SDK doesn't support image inputs (provider sets `supportsImageUrls = false`)
 - **No embedding support**: Text embeddings are not available through this provider
 - **Object-tool mode not supported**: Only `object-json` mode works via `generateObject`/`streamObject`. The AI SDK's tool calling interface is not implemented
 - **Text-only responses**: No support for file generation or other modalities
 - **Session management**: While sessions are supported, message history is the recommended approach
 - **Unsupported generation settings**: The following AI SDK settings are ignored and will generate warnings:
-  - `temperature` - Claude Code CLI doesn't expose temperature control
+  - `temperature` - Claude Code SDK doesn't expose temperature control
   - `maxTokens` - Token limits aren't configurable via CLI
   - `topP`, `topK` - Sampling parameters aren't available
   - `presencePenalty`, `frequencyPenalty` - Penalty parameters aren't supported
@@ -831,7 +831,7 @@ ai-sdk-provider-claude-code/
 ## Known Limitations
 
 1. **No image support**: The CLI doesn't accept image inputs
-2. **Authentication required**: Requires separate Claude Code CLI authentication (`claude login`)
+2. **Authentication required**: Requires separate Claude Code SDK authentication (`claude login`)
 3. **Session IDs change**: Each request gets a new session ID, even when using `--resume` 
 4. **No AI SDK tool calling interface**: The AI SDK's function/tool calling interface is not implemented, but Claude can use tools via MCP servers and built-in CLI tools
 
@@ -862,4 +862,4 @@ MIT - see [LICENSE](../LICENSE) for details.
 
 ## Acknowledgments
 
-This provider is built for the [Vercel AI SDK](https://sdk.vercel.ai/) and uses the [Claude Code CLI](https://docs.anthropic.com/claude-code/cli) by Anthropic.
+This provider is built for the [Vercel AI SDK](https://sdk.vercel.ai/) and uses the [Claude Code SDK](https://docs.anthropic.com/claude-code/cli) by Anthropic.

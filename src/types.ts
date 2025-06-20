@@ -27,7 +27,7 @@ export interface Logger {
 }
 
 /**
- * Configuration settings for Claude Code CLI behavior.
+ * Configuration settings for Claude Code SDK behavior.
  * These settings control how the CLI executes, what permissions it has,
  * and which tools are available during conversations.
  * 
@@ -44,7 +44,7 @@ export interface Logger {
  */
 export interface ClaudeCodeSettings {
   /**
-   * Custom path to Claude Code CLI executable
+   * Custom path to Claude Code SDK executable
    * @default 'claude' (uses system PATH)
    */
   pathToClaudeCodeExecutable?: string;

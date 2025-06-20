@@ -2,16 +2,16 @@
   <img src="https://img.shields.io/badge/warning-alpha-FF6700" alt="alpha warning">
   <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/v/ai-sdk-provider-claude-code?color=00A79E" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/unpacked-size/ai-sdk-provider-claude-code?color=00A79E" alt="install size" /></a>
-  <!-- <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/dy/ai-sdk-provider-claude-code.svg?color=00A79E" alt="npm downloads" /></a> -->
+  <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/dy/ai-sdk-provider-claude-code.svg?color=00A79E" alt="npm downloads" /></a>
   <a href="https://nodejs.org/en/about/releases/"><img src="https://img.shields.io/badge/node-%3E%3D18-00A79E" alt="Node.js ≥ 18" /></a>
   <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/l/ai-sdk-provider-claude-code?color=00A79E" alt="License: MIT" /></a>
 </p>
 
-# AI SDK Provider for Claude Code
+# AI SDK Provider for Claude Code SDK
 
 > **Warning**: This package is experimental and subject to change.
 
-**ai-sdk-provider-claude-code** lets you use Claude via the [Vercel AI SDK](https://sdk.vercel.ai/docs) through the official `@anthropic-ai/claude-code` CLI.
+**ai-sdk-provider-claude-code** lets you use Claude via the [Vercel AI SDK](https://sdk.vercel.ai/docs) through the official `@anthropic-ai/claude-code` SDK/CLI.
 
 ## Installation
 
@@ -30,7 +30,7 @@ npm install ai-sdk-provider-claude-code ai
 
 **This is an unofficial community provider** and is not affiliated with or endorsed by Anthropic or Vercel. By using this provider:
 
-- You understand that your data will be sent to Anthropic's servers through the Claude Code CLI
+- You understand that your data will be sent to Anthropic's servers through the Claude Code SDK
 - You agree to comply with [Anthropic's Terms of Service](https://www.anthropic.com/legal/consumer-terms)
 - You acknowledge this software is provided "as is" without warranties of any kind
 
