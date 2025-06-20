@@ -63,7 +63,7 @@ console.log(text);
 
 ## Core Features
 
-- 🚀 Full Vercel AI SDK compatibility
+- 🚀 Vercel AI SDK compatibility
 - 🔄 Streaming support
 - 💬 Multi-turn conversations
 - 🎯 Object generation with JSON schemas
