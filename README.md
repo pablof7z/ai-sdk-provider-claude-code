@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/warning-alpha-FF6700" alt="alpha warning">
-  <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/v/ai-sdk-provider-claude-code?color=00A79E" alt="npm version" /></a>
+  <img src="https://img.shields.io/badge/status-beta-FF6700" alt="beta status">
+  <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/v/ai-sdk-provider-claude-code/beta?color=00A79E" alt="npm beta version" /></a>
   <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/unpacked-size/ai-sdk-provider-claude-code?color=00A79E" alt="install size" /></a>
   <a href="https://www.npmjs.com/package/ai-sdk-provider-claude-code"><img src="https://img.shields.io/npm/dy/ai-sdk-provider-claude-code.svg?color=00A79E" alt="npm downloads" /></a>
   <a href="https://nodejs.org/en/about/releases/"><img src="https://img.shields.io/badge/node-%3E%3D18-00A79E" alt="Node.js ≥ 18" /></a>
@@ -9,9 +9,28 @@
 
 # AI SDK Provider for Claude Code SDK
 
-> **Warning**: This package is experimental and subject to change.
+> **Beta Release**: This is the v5-beta compatible version. For AI SDK v4 support, use version 0.2.x.
 
 **ai-sdk-provider-claude-code** lets you use Claude via the [Vercel AI SDK](https://sdk.vercel.ai/docs) through the official `@anthropic-ai/claude-code` SDK/CLI.
+
+## Version Compatibility
+
+| Provider Version | AI SDK Version | Status | Branch |
+|-----------------|----------------|---------|---------|
+| 0.x | v4 | Stable | [`ai-sdk-v4`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/ai-sdk-v4) |
+| 1.x-beta | v5-beta | Beta | `main` |
+
+### Installing the Right Version
+
+**For AI SDK v4 (stable):**
+```bash
+npm install ai-sdk-provider-claude-code@^0.2.2 ai@^4.3.16
+```
+
+**For AI SDK v5-beta:**
+```bash
+npm install ai-sdk-provider-claude-code@beta ai@beta
+```
 
 ## Installation
 
@@ -23,7 +42,11 @@ claude login
 
 ### 2. Add the provider
 ```bash
-npm install ai-sdk-provider-claude-code ai
+# For v5-beta
+npm install ai-sdk-provider-claude-code@beta ai@beta
+
+# For v4 (stable)
+npm install ai-sdk-provider-claude-code@^0.2.2 ai@^4.3.16
 ```
 
 ## Disclaimer
@@ -38,6 +61,21 @@ Please ensure you have appropriate permissions and comply with all applicable te
 
 ## Quick Start
 
+### AI SDK v5-beta
+```typescript
+import { streamText } from 'ai';
+import { claudeCode } from 'ai-sdk-provider-claude-code';
+
+const result = streamText({
+  model: claudeCode('sonnet'),
+  prompt: 'Hello, Claude!'
+});
+
+const text = await result.text;
+console.log(text);
+```
+
+### AI SDK v4
 ```typescript
 import { generateText } from 'ai';
 import { claudeCode } from 'ai-sdk-provider-claude-code';
@@ -50,6 +88,16 @@ const { text } = await generateText({
 console.log(text);
 ```
 
+## Breaking Changes in v1.x-beta
+
+See [Breaking Changes Guide](docs/ai-sdk-v5/V5_BREAKING_CHANGES.md) for details on migrating from v0.x to v1.x-beta.
+
+Key changes:
+- Requires AI SDK v5-beta
+- New streaming API pattern
+- Updated token usage properties
+- Changed message types
+
 ## Models
 
 - **`opus`** - Claude 4 Opus (most capable)
@@ -57,8 +105,9 @@ console.log(text);
 
 ## Documentation
 
-- **[Usage Guide](docs/GUIDE.md)** - Comprehensive examples and configuration
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Usage Guide](docs/ai-sdk-v5/GUIDE.md)** - Comprehensive examples and configuration
+- **[Breaking Changes](docs/ai-sdk-v5/V5_BREAKING_CHANGES.md)** - v0.x to v1.x migration guide
+- **[Troubleshooting](docs/ai-sdk-v5/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Examples](examples/)** - Sample scripts and patterns
 
 ## Core Features
@@ -84,9 +133,9 @@ We welcome contributions, especially:
 - Better error handling
 - Additional examples
 
-See [Contributing Guidelines](docs/GUIDE.md#contributing) for details.
+See [Contributing Guidelines](docs/ai-sdk-v5/GUIDE.md#contributing) for details.
 
-For development status and technical details, see [Development Status](docs/DEVELOPMENT-STATUS.md).
+For development status and technical details, see [Development Status](docs/ai-sdk-v5/DEVELOPMENT-STATUS.md).
 
 ## License
 
