@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-08-25
+
+### Fixed
+- Added missing HTTP transport validation for MCP server configuration (#38)
+
 ## [1.1.0] - 2025-08-18
 
 ### Added
