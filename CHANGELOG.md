@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-08-25
+
+### Fixed
+- Added missing HTTP transport validation for MCP server configuration (backported from main branch)
+
+## [0.2.2] - 2025-06-20
+
+### Fixed
+- Fixed Zod function validation issues in v4 compatibility
+
+## [0.2.1] - 2025-06-20
+
+### Fixed
+- Updated z.record() calls for Zod v3/v4 compatibility
+
 ## [0.2.0] - 2025-06-19
 
 ### Added
