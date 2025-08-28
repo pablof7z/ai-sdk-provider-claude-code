@@ -17,8 +17,8 @@
 
 | Provider Version | AI SDK Version | NPM Tag | Status | Branch |
 |-----------------|----------------|---------|---------|--------|
-| 1.x | v5 | `latest` | Stable | `main` |
-| 0.x | v4 | `ai-sdk-v4` | Maintenance | [`ai-sdk-v4`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/ai-sdk-v4) |
+| 1.x.x | v5 | `latest` | Stable | `main` |
+| 0.x.x | v4 | `ai-sdk-v4` | Maintenance | [`ai-sdk-v4`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/ai-sdk-v4) |
 
 ### Installing the Right Version
 
@@ -119,12 +119,14 @@ Key changes:
 - 🎯 Object generation with JSON schemas
 - 🛑 AbortSignal support
 - 🔧 Tool management (MCP servers, permissions)
+ - 🧩 Callbacks (hooks, canUseTool)
 
 ## Limitations
 
 - Requires Node.js ≥ 18
 - No image support
 - Some AI SDK parameters unsupported (temperature, maxTokens, etc.)
+- `canUseTool` requires streaming input at the SDK level (AsyncIterable prompt). This provider supports it via `streamingInput`: use `'auto'` (default when `canUseTool` is set) or `'always'`. See GUIDE for details.
 
 ## Contributing
 

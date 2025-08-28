@@ -16,7 +16,34 @@ import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
 import { validateModelId, validatePrompt, validateSessionId } from './validation.js';
 import { getLogger } from './logger.js';
 
-import { query, AbortError, type Options } from '@anthropic-ai/claude-code';
+import { query, type Options } from '@anthropic-ai/claude-code';
+import type { SDKUserMessage } from '@anthropic-ai/claude-code';
+
+function isAbortError(err: unknown): boolean {
+  if (err && typeof err === 'object') {
+    const e = err as { name?: unknown; code?: unknown };
+    if (typeof e.name === 'string' && e.name === 'AbortError') return true;
+    if (typeof e.code === 'string' && e.code.toUpperCase() === 'ABORT_ERR') return true;
+  }
+  return false;
+}
+
+function toAsyncIterablePrompt(messagesPrompt: string, sessionId?: string): AsyncIterable<SDKUserMessage> {
+  const msg: SDKUserMessage = {
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [{ type: 'text', text: messagesPrompt }],
+    },
+    parent_tool_use_id: null,
+    session_id: sessionId ?? '',
+  };
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield msg;
+    },
+  };
+}
 
 /**
  * Options for creating a Claude Code language model instance.
@@ -201,7 +228,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
   }
 
   private createQueryOptions(abortController: AbortController): Options {
-    return {
+    const opts: Partial<Options> & Record<string, unknown> = {
       model: this.getModel(),
       abortController,
       resume: this.settings.resume ?? this.sessionId,
@@ -219,7 +246,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       allowedTools: this.settings.allowedTools,
       disallowedTools: this.settings.disallowedTools,
       mcpServers: this.settings.mcpServers,
+      canUseTool: this.settings.canUseTool,
     };
+    // hooks is supported in newer SDKs; include it if provided
+    if (this.settings.hooks) {
+      opts.hooks = this.settings.hooks;
+    }
+    return opts as Options;
   }
 
   private handleClaudeCodeError(
@@ -227,7 +260,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     messagesPrompt: string
   ): APICallError | LoadAPIKeyError {
     // Handle AbortError from the SDK
-    if (error instanceof AbortError) {
+    if (isAbortError(error)) {
       // Return the abort reason if available, otherwise the error itself
       throw error;
     }
@@ -360,8 +393,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     const abortController = new AbortController();
     let abortListener: (() => void) | undefined;
-    if (options.abortSignal) {
-      abortListener = () => abortController.abort();
+    if (options.abortSignal?.aborted) {
+      // Propagate already-aborted state immediately with original reason
+      abortController.abort(options.abortSignal.reason);
+    } else if (options.abortSignal) {
+      abortListener = () => abortController.abort(options.abortSignal?.reason);
       options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
@@ -386,8 +422,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     }
 
     try {
+      const modeSetting = this.settings.streamingInput ?? 'auto';
+      const wantsStream = modeSetting === 'always' || (modeSetting === 'auto' && !!this.settings.canUseTool);
+      if (this.settings.canUseTool && this.settings.permissionPromptToolName) {
+        throw new Error("canUseTool requires streamingInput mode ('auto' or 'always') and cannot be used with permissionPromptToolName (SDK constraint). Set streamingInput: 'auto' (or 'always') and remove permissionPromptToolName, or remove canUseTool.");
+      }
+      const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, this.settings.resume ?? this.sessionId) : messagesPrompt;
       const response = query({
-        prompt: messagesPrompt,
+        prompt: sdkPrompt,
         options: queryOptions,
       });
 
@@ -422,7 +464,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       }
     } catch (error: unknown) {
       // Special handling for AbortError to preserve abort signal reason
-      if (error instanceof AbortError) {
+      if (isAbortError(error)) {
         throw options.abortSignal?.aborted ? options.abortSignal.reason : error;
       }
       
@@ -486,8 +528,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     const abortController = new AbortController();
     let abortListener: (() => void) | undefined;
-    if (options.abortSignal) {
-      abortListener = () => abortController.abort();
+    if (options.abortSignal?.aborted) {
+      // Propagate already-aborted state immediately with original reason
+      abortController.abort(options.abortSignal.reason);
+    } else if (options.abortSignal) {
+      abortListener = () => abortController.abort(options.abortSignal?.reason);
       options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
@@ -511,8 +556,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
           // Emit stream-start with warnings
           controller.enqueue({ type: 'stream-start', warnings });
           
+          const modeSetting = this.settings.streamingInput ?? 'auto';
+          const wantsStream = modeSetting === 'always' || (modeSetting === 'auto' && !!this.settings.canUseTool);
+          if (this.settings.canUseTool && this.settings.permissionPromptToolName) {
+            throw new Error("canUseTool requires streamingInput mode ('auto' or 'always') and cannot be used with permissionPromptToolName (SDK constraint). Set streamingInput: 'auto' (or 'always') and remove permissionPromptToolName, or remove canUseTool.");
+          }
+          const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, this.settings.resume ?? this.sessionId) : messagesPrompt;
           const response = query({
-            prompt: messagesPrompt,
+            prompt: sdkPrompt,
             options: queryOptions,
           });
 
@@ -633,7 +684,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
           let errorToEmit: unknown;
           
           // Special handling for AbortError to preserve abort signal reason
-          if (error instanceof AbortError) {
+          if (isAbortError(error)) {
             errorToEmit = options.abortSignal?.aborted ? options.abortSignal.reason : error;
           } else {
             // Use unified error handler
