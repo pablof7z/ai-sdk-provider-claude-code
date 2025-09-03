@@ -28,7 +28,7 @@ function isAbortError(err: unknown): boolean {
   return false;
 }
 
-function toAsyncIterablePrompt(messagesPrompt: string, sessionId?: string): AsyncIterable<SDKUserMessage> {
+function toAsyncIterablePrompt(messagesPrompt: string, outputStreamEnded: Promise<unknown>, sessionId?: string): AsyncIterable<SDKUserMessage> {
   const msg: SDKUserMessage = {
     type: 'user',
     message: {
@@ -41,6 +41,7 @@ function toAsyncIterablePrompt(messagesPrompt: string, sessionId?: string): Asyn
   return {
     async *[Symbol.asyncIterator]() {
       yield msg;
+      await outputStreamEnded;
     },
   };
 }
@@ -421,13 +422,17 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       });
     }
 
+    let done = () => {};
+    const outputStreamEnded = new Promise(resolve => { done = () => resolve(undefined); });
     try {
       const modeSetting = this.settings.streamingInput ?? 'auto';
       const wantsStream = modeSetting === 'always' || (modeSetting === 'auto' && !!this.settings.canUseTool);
       if (this.settings.canUseTool && this.settings.permissionPromptToolName) {
         throw new Error("canUseTool requires streamingInput mode ('auto' or 'always') and cannot be used with permissionPromptToolName (SDK constraint). Set streamingInput: 'auto' (or 'always') and remove permissionPromptToolName, or remove canUseTool.");
       }
-      const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, this.settings.resume ?? this.sessionId) : messagesPrompt;
+      // hold input stream open until results
+      // see: https://github.com/anthropics/claude-code/issues/4775
+      const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, outputStreamEnded, this.settings.resume ?? this.sessionId) : messagesPrompt;
       const response = query({
         prompt: sdkPrompt,
         options: queryOptions,
@@ -439,6 +444,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
             c.type === 'text' ? c.text : ''
           ).join('');
         } else if (message.type === 'result') {
+          done();
           this.setSessionId(message.session_id);
           costUsd = message.total_cost_usd;
           durationMs = message.duration_ms;
@@ -463,6 +469,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
         }
       }
     } catch (error: unknown) {
+      done();
       // Special handling for AbortError to preserve abort signal reason
       if (isAbortError(error)) {
         throw options.abortSignal?.aborted ? options.abortSignal.reason : error;
@@ -552,6 +559,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     const stream = new ReadableStream<LanguageModelV2StreamPart>({
       start: async (controller) => {
+        let done = () => {};
+        const outputStreamEnded = new Promise(resolve => { done = () => resolve(undefined); });
         try {
           // Emit stream-start with warnings
           controller.enqueue({ type: 'stream-start', warnings });
@@ -561,7 +570,9 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
           if (this.settings.canUseTool && this.settings.permissionPromptToolName) {
             throw new Error("canUseTool requires streamingInput mode ('auto' or 'always') and cannot be used with permissionPromptToolName (SDK constraint). Set streamingInput: 'auto' (or 'always') and remove permissionPromptToolName, or remove canUseTool.");
           }
-          const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, this.settings.resume ?? this.sessionId) : messagesPrompt;
+          // hold input stream open until results
+          // see: https://github.com/anthropics/claude-code/issues/4775
+          const sdkPrompt = wantsStream ? toAsyncIterablePrompt(messagesPrompt, outputStreamEnded, this.settings.resume ?? this.sessionId) : messagesPrompt;
           const response = query({
             prompt: sdkPrompt,
             options: queryOptions,
@@ -600,6 +611,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
                 }
               }
             } else if (message.type === 'result') {
+              done();
               let rawUsage: unknown | undefined;
               if ('usage' in message) {
                 rawUsage = message.usage;
@@ -681,6 +693,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
           controller.close();
         } catch (error: unknown) {
+          done();
           let errorToEmit: unknown;
           
           // Special handling for AbortError to preserve abort signal reason
