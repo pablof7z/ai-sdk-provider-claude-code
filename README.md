@@ -15,19 +15,25 @@
 
 ## Version Compatibility
 
-| Provider Version | AI SDK Version | Underlying SDK                       | NPM Tag     | Status | Branch                                                                                  |
-| ---------------- | -------------- | ------------------------------------ | ----------- | ------ | --------------------------------------------------------------------------------------- |
-| 2.x.x            | v5             | `@anthropic-ai/claude-agent-sdk`     | `latest`    | Stable | `main`                                                                                  |
-| 1.x.x            | v5             | `@anthropic-ai/claude-code` (legacy) | `v1`        | Stable | [`v1`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/v1)               |
-| 0.x.x            | v4             | `@anthropic-ai/claude-code`          | `ai-sdk-v4` | Legacy | [`ai-sdk-v4`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/ai-sdk-v4) |
+| Provider Version | AI SDK Version | Underlying SDK                       | NPM Tag              | Status | Branch                                                                                  |
+| ---------------- | -------------- | ------------------------------------ | -------------------- | ------ | --------------------------------------------------------------------------------------- |
+| 2.x.x            | v5             | `@anthropic-ai/claude-agent-sdk`     | `latest`             | Stable | `main`                                                                                  |
+| 1.x.x            | v5             | `@anthropic-ai/claude-code` (legacy) | `v1-claude-code-sdk` | Stable | [`v1`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/v1)               |
+| 0.x.x            | v4             | `@anthropic-ai/claude-code`          | `ai-sdk-v4`          | Legacy | [`ai-sdk-v4`](https://github.com/ben-vargas/ai-sdk-provider-claude-code/tree/ai-sdk-v4) |
 
 ### Installing the Right Version
 
-**For AI SDK v5 (recommended):**
+**For AI SDK v5 with Claude Agent SDK (recommended):**
 
 ```bash
 npm install ai-sdk-provider-claude-code ai
 # or explicitly: npm install ai-sdk-provider-claude-code@latest
+```
+
+**For AI SDK v5 with Claude Code SDK (legacy):**
+
+```bash
+npm install ai-sdk-provider-claude-code@v1-claude-code-sdk ai
 ```
 
 **For AI SDK v4 (legacy):**
