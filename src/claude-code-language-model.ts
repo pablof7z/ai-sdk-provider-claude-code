@@ -6,43 +6,30 @@ import type {
   LanguageModelV2Usage,
   JSONValue,
 } from '@ai-sdk/provider';
-import {
-  NoSuchModelError,
-  APICallError,
-  LoadAPIKeyError,
-} from '@ai-sdk/provider';
+import { NoSuchModelError, APICallError, LoadAPIKeyError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
 import type { ClaudeCodeSettings, Logger } from './types.js';
 import { convertToClaudeCodeMessages } from './convert-to-claude-code-messages.js';
 import { extractJson } from './extract-json.js';
-import {
-  createAPICallError,
-  createAuthenticationError,
-  createTimeoutError,
-} from './errors.js';
+import { createAPICallError, createAuthenticationError, createTimeoutError } from './errors.js';
 import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
-import {
-  validateModelId,
-  validatePrompt,
-  validateSessionId,
-} from './validation.js';
+import { validateModelId, validatePrompt, validateSessionId } from './validation.js';
 import { getLogger } from './logger.js';
 
-import { query, type Options } from '@anthropic-ai/claude-code';
-import type { SDKUserMessage } from '@anthropic-ai/claude-code';
+import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
 function isAbortError(err: unknown): boolean {
   if (err && typeof err === 'object') {
     const e = err as { name?: unknown; code?: unknown };
     if (typeof e.name === 'string' && e.name === 'AbortError') return true;
-    if (typeof e.code === 'string' && e.code.toUpperCase() === 'ABORT_ERR')
-      return true;
+    if (typeof e.code === 'string' && e.code.toUpperCase() === 'ABORT_ERR') return true;
   }
   return false;
 }
 
 const STREAMING_FEATURE_WARNING =
-  "Claude Code SDK features (hooks/MCP/images) require streaming input. Set `streamingInput: 'always'` or provide `canUseTool` (auto streams only when canUseTool is set).";
+  "Claude Agent SDK features (hooks/MCP/images) require streaming input. Set `streamingInput: 'always'` or provide `canUseTool` (auto streams only when canUseTool is set).";
 
 type ClaudeToolUse = {
   id: string;
@@ -238,11 +225,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     this.logger = getLogger(this.settings.logger);
 
     // Validate model ID format
-    if (
-      !this.modelId ||
-      typeof this.modelId !== 'string' ||
-      this.modelId.trim() === ''
-    ) {
+    if (!this.modelId || typeof this.modelId !== 'string' || this.modelId.trim() === '') {
       throw new NoSuchModelError({
         modelId: this.modelId,
         modelType: 'languageModel',
@@ -272,25 +255,14 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     return content
       .filter(
-        (
-          item
-        ): item is {
-          type: string;
-          id?: unknown;
-          name?: unknown;
-          input?: unknown;
-        } =>
+        (item): item is { type: string; id?: unknown; name?: unknown; input?: unknown } =>
           typeof item === 'object' &&
           item !== null &&
           'type' in item &&
           (item as { type: unknown }).type === 'tool_use'
       )
       .map((item) => {
-        const { id, name, input } = item as {
-          id?: unknown;
-          name?: unknown;
-          input?: unknown;
-        };
+        const { id, name, input } = item as { id?: unknown; name?: unknown; input?: unknown };
         return {
           id: typeof id === 'string' && id.length > 0 ? id : generateId(),
           name:
@@ -327,9 +299,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
         const { tool_use_id, content, is_error, name } = item;
         return {
           id:
-            typeof tool_use_id === 'string' && tool_use_id.length > 0
-              ? tool_use_id
-              : generateId(),
+            typeof tool_use_id === 'string' && tool_use_id.length > 0 ? tool_use_id : generateId(),
           name: typeof name === 'string' && name.length > 0 ? name : undefined,
           result: content,
           isError: Boolean(is_error),
@@ -369,9 +339,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
         };
         return {
           id:
-            typeof tool_use_id === 'string' && tool_use_id.length > 0
-              ? tool_use_id
-              : generateId(),
+            typeof tool_use_id === 'string' && tool_use_id.length > 0 ? tool_use_id : generateId(),
           name: typeof name === 'string' && name.length > 0 ? name : undefined,
           error,
         };
@@ -436,14 +404,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     const unsupportedParams: string[] = [];
 
     // Check for unsupported parameters
-    if (options.temperature !== undefined)
-      unsupportedParams.push('temperature');
+    if (options.temperature !== undefined) unsupportedParams.push('temperature');
     if (options.topP !== undefined) unsupportedParams.push('topP');
     if (options.topK !== undefined) unsupportedParams.push('topK');
-    if (options.presencePenalty !== undefined)
-      unsupportedParams.push('presencePenalty');
-    if (options.frequencyPenalty !== undefined)
-      unsupportedParams.push('frequencyPenalty');
+    if (options.presencePenalty !== undefined) unsupportedParams.push('presencePenalty');
+    if (options.frequencyPenalty !== undefined) unsupportedParams.push('frequencyPenalty');
     if (options.stopSequences !== undefined && options.stopSequences.length > 0)
       unsupportedParams.push('stopSequences');
     if (options.seed !== undefined) unsupportedParams.push('seed');
@@ -495,10 +460,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     return warnings;
   }
 
-  private handleJsonExtraction(
-    text: string,
-    warnings: LanguageModelV2CallWarning[]
-  ): string {
+  private handleJsonExtraction(text: string, warnings: LanguageModelV2CallWarning[]): string {
     const extracted = extractJson(text);
     const validation = this.validateJsonExtraction(text, extracted);
 
@@ -515,8 +477,6 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       abortController,
       resume: this.settings.resume ?? this.sessionId,
       pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
-      customSystemPrompt: this.settings.customSystemPrompt,
-      appendSystemPrompt: this.settings.appendSystemPrompt,
       maxTurns: this.settings.maxTurns,
       maxThinkingTokens: this.settings.maxThinkingTokens,
       cwd: this.settings.cwd,
@@ -530,6 +490,53 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       mcpServers: this.settings.mcpServers,
       canUseTool: this.settings.canUseTool,
     };
+    // NEW: Agent SDK options with legacy mapping
+    if (this.settings.systemPrompt !== undefined) {
+      opts.systemPrompt = this.settings.systemPrompt;
+    } else if (this.settings.customSystemPrompt !== undefined) {
+      // Deprecation warning for legacy field
+      this.logger.warn(
+        "[claude-code] 'customSystemPrompt' is deprecated and will be removed in a future major release. Please use 'systemPrompt' instead (string or { type: 'preset', preset: 'claude_code', append? })."
+      );
+      opts.systemPrompt = this.settings.customSystemPrompt;
+    } else if (this.settings.appendSystemPrompt !== undefined) {
+      // Deprecation warning for legacy field
+      this.logger.warn(
+        "[claude-code] 'appendSystemPrompt' is deprecated and will be removed in a future major release. Please use 'systemPrompt: { type: 'preset', preset: 'claude_code', append: <text> }' instead."
+      );
+      opts.systemPrompt = {
+        type: 'preset',
+        preset: 'claude_code',
+        append: this.settings.appendSystemPrompt,
+      } as const;
+    }
+    if (this.settings.settingSources !== undefined) {
+      opts.settingSources = this.settings.settingSources;
+    }
+    if (this.settings.additionalDirectories !== undefined) {
+      opts.additionalDirectories = this.settings.additionalDirectories;
+    }
+    if (this.settings.agents !== undefined) {
+      opts.agents = this.settings.agents;
+    }
+    if (this.settings.includePartialMessages !== undefined) {
+      opts.includePartialMessages = this.settings.includePartialMessages;
+    }
+    if (this.settings.fallbackModel !== undefined) {
+      opts.fallbackModel = this.settings.fallbackModel;
+    }
+    if (this.settings.forkSession !== undefined) {
+      opts.forkSession = this.settings.forkSession;
+    }
+    if (this.settings.stderr !== undefined) {
+      opts.stderr = this.settings.stderr;
+    }
+    if (this.settings.strictMcpConfig !== undefined) {
+      opts.strictMcpConfig = this.settings.strictMcpConfig;
+    }
+    if (this.settings.extraArgs !== undefined) {
+      opts.extraArgs = this.settings.extraArgs;
+    }
     // hooks is supported in newer SDKs; include it if provided
     if (this.settings.hooks) {
       opts.hooks = this.settings.hooks;
@@ -572,18 +579,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     ];
 
     const errorMessage =
-      isErrorWithMessage(error) && error.message
-        ? error.message.toLowerCase()
-        : '';
+      isErrorWithMessage(error) && error.message ? error.message.toLowerCase() : '';
 
     const exitCode =
-      isErrorWithCode(error) && typeof error.exitCode === 'number'
-        ? error.exitCode
-        : undefined;
+      isErrorWithCode(error) && typeof error.exitCode === 'number' ? error.exitCode : undefined;
 
     const isAuthError =
-      authErrorPatterns.some((pattern) => errorMessage.includes(pattern)) ||
-      exitCode === 401;
+      authErrorPatterns.some((pattern) => errorMessage.includes(pattern)) || exitCode === 401;
 
     if (isAuthError) {
       return createAuthenticationError({
@@ -595,17 +597,11 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     }
 
     // Check for timeout errors
-    const errorCode =
-      isErrorWithCode(error) && typeof error.code === 'string'
-        ? error.code
-        : '';
+    const errorCode = isErrorWithCode(error) && typeof error.code === 'string' ? error.code : '';
 
     if (errorCode === 'ETIMEDOUT' || errorMessage.includes('timeout')) {
       return createTimeoutError({
-        message:
-          isErrorWithMessage(error) && error.message
-            ? error.message
-            : 'Request timed out',
+        message: isErrorWithMessage(error) && error.message ? error.message : 'Request timed out',
         promptExcerpt: messagesPrompt.substring(0, 200),
         // Don't specify timeoutMs since we don't know the actual timeout value
         // It's controlled by the consumer via AbortSignal
@@ -620,16 +616,10 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       errorCode === 'ECONNRESET';
 
     return createAPICallError({
-      message:
-        isErrorWithMessage(error) && error.message
-          ? error.message
-          : 'Claude Code SDK error',
+      message: isErrorWithMessage(error) && error.message ? error.message : 'Claude Code SDK error',
       code: errorCode || undefined,
       exitCode: exitCode,
-      stderr:
-        isErrorWithCode(error) && typeof error.stderr === 'string'
-          ? error.stderr
-          : undefined,
+      stderr: isErrorWithCode(error) && typeof error.stderr === 'string' ? error.stderr : undefined,
       promptExcerpt: messagesPrompt.substring(0, 200),
       isRetryable,
     });
@@ -668,8 +658,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
         valid: false,
         warning: {
           type: 'other',
-          message:
-            'JSON extraction resulted in invalid JSON. The response may be malformed.',
+          message: 'JSON extraction resulted in invalid JSON. The response may be malformed.',
         },
       };
     }
@@ -692,9 +681,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     } = convertToClaudeCodeMessages(
       options.prompt,
       mode,
-      options.responseFormat?.type === 'json'
-        ? options.responseFormat.schema
-        : undefined
+      options.responseFormat?.type === 'json' ? options.responseFormat.schema : undefined
     );
 
     const abortController = new AbortController();
@@ -704,19 +691,13 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       abortController.abort(options.abortSignal.reason);
     } else if (options.abortSignal) {
       abortListener = () => abortController.abort(options.abortSignal?.reason);
-      options.abortSignal.addEventListener('abort', abortListener, {
-        once: true,
-      });
+      options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
     const queryOptions = this.createQueryOptions(abortController);
 
     let text = '';
-    let usage: LanguageModelV2Usage = {
-      inputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-    };
+    let usage: LanguageModelV2Usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
     let finishReason: LanguageModelV2FinishReason = 'stop';
     let costUsd: number | undefined;
     let durationMs: number | undefined;
@@ -738,8 +719,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     const modeSetting = this.settings.streamingInput ?? 'auto';
     const wantsStreamInput =
-      modeSetting === 'always' ||
-      (modeSetting === 'auto' && !!this.settings.canUseTool);
+      modeSetting === 'always' || (modeSetting === 'auto' && !!this.settings.canUseTool);
 
     if (!wantsStreamInput && hasImageParts) {
       warnings.push({
@@ -776,9 +756,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       for await (const message of response) {
         if (message.type === 'assistant') {
           text += message.message.content
-            .map((c: { type: string; text?: string }) =>
-              c.type === 'text' ? c.text : ''
-            )
+            .map((c: { type: string; text?: string }) => (c.type === 'text' ? c.text : ''))
             .join('');
         } else if (message.type === 'result') {
           done();
@@ -868,9 +846,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     } = convertToClaudeCodeMessages(
       options.prompt,
       mode,
-      options.responseFormat?.type === 'json'
-        ? options.responseFormat.schema
-        : undefined
+      options.responseFormat?.type === 'json' ? options.responseFormat.schema : undefined
     );
 
     const abortController = new AbortController();
@@ -880,9 +856,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
       abortController.abort(options.abortSignal.reason);
     } else if (options.abortSignal) {
       abortListener = () => abortController.abort(options.abortSignal?.reason);
-      options.abortSignal.addEventListener('abort', abortListener, {
-        once: true,
-      });
+      options.abortSignal.addEventListener('abort', abortListener, { once: true });
     }
 
     const queryOptions = this.createQueryOptions(abortController);
@@ -904,8 +878,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
     const modeSetting = this.settings.streamingInput ?? 'auto';
     const wantsStreamInput =
-      modeSetting === 'always' ||
-      (modeSetting === 'auto' && !!this.settings.canUseTool);
+      modeSetting === 'always' || (modeSetting === 'auto' && !!this.settings.canUseTool);
 
     if (!wantsStreamInput && hasImageParts) {
       warnings.push({
@@ -969,10 +942,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
           // Emit stream-start with warnings
           controller.enqueue({ type: 'stream-start', warnings });
 
-          if (
-            this.settings.canUseTool &&
-            this.settings.permissionPromptToolName
-          ) {
+          if (this.settings.canUseTool && this.settings.permissionPromptToolName) {
             throw new Error(
               "canUseTool requires streamingInput mode ('auto' or 'always') and cannot be used with permissionPromptToolName (SDK constraint). Set streamingInput: 'auto' (or 'always') and remove permissionPromptToolName, or remove canUseTool."
             );
@@ -992,11 +962,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
             options: queryOptions,
           });
 
-          let usage: LanguageModelV2Usage = {
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-          };
+          let usage: LanguageModelV2Usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
           let accumulatedText = '';
           let textPartId: string | undefined;
 
@@ -1043,22 +1009,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
                   // First input: emit full delta only if small enough
                   if (state.lastSerializedInput === undefined) {
-                    if (
-                      serializedInput.length <=
-                      ClaudeCodeLanguageModel.MAX_DELTA_CALC_SIZE
-                    ) {
+                    if (serializedInput.length <= ClaudeCodeLanguageModel.MAX_DELTA_CALC_SIZE) {
                       deltaPayload = serializedInput;
                     }
                   } else if (
-                    serializedInput.length <=
-                      ClaudeCodeLanguageModel.MAX_DELTA_CALC_SIZE &&
+                    serializedInput.length <= ClaudeCodeLanguageModel.MAX_DELTA_CALC_SIZE &&
                     state.lastSerializedInput.length <=
                       ClaudeCodeLanguageModel.MAX_DELTA_CALC_SIZE &&
                     serializedInput.startsWith(state.lastSerializedInput)
                   ) {
-                    deltaPayload = serializedInput.slice(
-                      state.lastSerializedInput.length
-                    );
+                    deltaPayload = serializedInput.slice(state.lastSerializedInput.length);
                   } else if (serializedInput !== state.lastSerializedInput) {
                     // Non-prefix updates or large inputs - defer to the final tool-call payload
                     deltaPayload = '';
@@ -1076,9 +1036,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
               }
 
               const text = content
-                .map((c: { type: string; text?: string }) =>
-                  c.type === 'text' ? c.text : ''
-                )
+                .map((c: { type: string; text?: string }) => (c.type === 'text' ? c.text : ''))
                 .join('');
 
               if (text) {
@@ -1115,9 +1073,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
               for (const result of this.extractToolResults(content)) {
                 let state = toolStates.get(result.id);
                 const toolName =
-                  result.name ??
-                  state?.name ??
-                  ClaudeCodeLanguageModel.UNKNOWN_TOOL_NAME;
+                  result.name ?? state?.name ?? ClaudeCodeLanguageModel.UNKNOWN_TOOL_NAME;
                 if (!state) {
                   console.warn(
                     `[claude-code] Received tool result for unknown tool ID: ${result.id}`
@@ -1148,9 +1104,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
                   }
                 }
                 state.name = toolName;
-                const normalizedResult = this.normalizeToolResult(
-                  result.result
-                );
+                const normalizedResult = this.normalizeToolResult(result.result);
                 const rawResult =
                   typeof result.result === 'string'
                     ? result.result
@@ -1185,9 +1139,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
               for (const error of this.extractToolErrors(content)) {
                 let state = toolStates.get(error.id);
                 const toolName =
-                  error.name ??
-                  state?.name ??
-                  ClaudeCodeLanguageModel.UNKNOWN_TOOL_NAME;
+                  error.name ?? state?.name ?? ClaudeCodeLanguageModel.UNKNOWN_TOOL_NAME;
 
                 if (!state) {
                   console.warn(
@@ -1250,18 +1202,16 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
                 };
               }
 
-              const finishReason: LanguageModelV2FinishReason =
-                mapClaudeCodeFinishReason(message.subtype);
+              const finishReason: LanguageModelV2FinishReason = mapClaudeCodeFinishReason(
+                message.subtype
+              );
 
               // Store session ID in the model instance
               this.setSessionId(message.session_id);
 
               // Check if we need to extract JSON based on responseFormat
               if (options.responseFormat?.type === 'json' && accumulatedText) {
-                const extractedJson = this.handleJsonExtraction(
-                  accumulatedText,
-                  streamWarnings
-                );
+                const extractedJson = this.handleJsonExtraction(accumulatedText, streamWarnings);
 
                 // Emit text-start/delta/end for JSON content
                 const jsonTextId = generateId();
@@ -1289,8 +1239,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
               finalizeToolCalls();
 
               // Prepare JSON-safe warnings for provider metadata
-              const warningsJson =
-                this.serializeWarningsForMetadata(streamWarnings);
+              const warningsJson = this.serializeWarningsForMetadata(streamWarnings);
 
               controller.enqueue({
                 type: 'finish',
@@ -1302,12 +1251,8 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
                     ...(message.total_cost_usd !== undefined && {
                       costUsd: message.total_cost_usd,
                     }),
-                    ...(message.duration_ms !== undefined && {
-                      durationMs: message.duration_ms,
-                    }),
-                    ...(rawUsage !== undefined && {
-                      rawUsage: rawUsage as JSONValue,
-                    }),
+                    ...(message.duration_ms !== undefined && { durationMs: message.duration_ms }),
+                    ...(rawUsage !== undefined && { rawUsage: rawUsage as JSONValue }),
                     // JSON validation warnings are collected during streaming and included
                     // in providerMetadata since the AI SDK's finish event doesn't support
                     // a top-level warnings field (unlike stream-start which was already emitted)
@@ -1317,10 +1262,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
                   },
                 },
               });
-            } else if (
-              message.type === 'system' &&
-              message.subtype === 'init'
-            ) {
+            } else if (message.type === 'system' && message.subtype === 'init') {
               // Store session ID for future use
               this.setSessionId(message.session_id);
 
@@ -1343,9 +1285,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
           // Special handling for AbortError to preserve abort signal reason
           if (isAbortError(error)) {
-            errorToEmit = options.abortSignal?.aborted
-              ? options.abortSignal.reason
-              : error;
+            errorToEmit = options.abortSignal?.aborted ? options.abortSignal.reason : error;
           } else {
             // Use unified error handler
             errorToEmit = this.handleClaudeCodeError(error, messagesPrompt);
@@ -1379,9 +1319,7 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
     };
   }
 
-  private serializeWarningsForMetadata(
-    warnings: LanguageModelV2CallWarning[]
-  ): JSONValue {
+  private serializeWarningsForMetadata(warnings: LanguageModelV2CallWarning[]): JSONValue {
     const result = warnings.map((w) => {
       const base: Record<string, string> = { type: w.type };
       if ('message' in w) {

@@ -14,7 +14,7 @@ type ToolErrorPart = {
 type ExtendedStreamPart = LanguageModelV2StreamPart | ToolErrorPart;
 
 // Mock the SDK module with factory function
-vi.mock('@anthropic-ai/claude-code', () => {
+vi.mock('@anthropic-ai/claude-agent-sdk', () => {
   return {
     query: vi.fn(),
     // Note: real SDK may not export AbortError at runtime; test mock provides it
@@ -28,14 +28,11 @@ vi.mock('@anthropic-ai/claude-code', () => {
 });
 
 // Import the mocked module to get typed references
-import {
-  query as mockQuery,
-  AbortError as MockAbortError,
-} from '@anthropic-ai/claude-code';
-import type { SDKUserMessage } from '@anthropic-ai/claude-code';
+import { query as mockQuery, AbortError as MockAbortError } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
 const STREAMING_WARNING_MESSAGE =
-  "Claude Code SDK features (hooks/MCP/images) require streaming input. Set `streamingInput: 'always'` or provide `canUseTool` (auto streams only when canUseTool is set).";
+  "Claude Agent SDK features (hooks/MCP/images) require streaming input. Set `streamingInput: 'always'` or provide `canUseTool` (auto streams only when canUseTool is set).";
 
 describe('ClaudeCodeLanguageModel', () => {
   let model: ClaudeCodeLanguageModel;
@@ -99,16 +96,12 @@ describe('ClaudeCodeLanguageModel', () => {
 
       let promptContentPromise: Promise<any> | undefined;
 
-      const isAsyncIterable = (
-        value: unknown
-      ): value is AsyncIterable<unknown> => {
+      const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> => {
         return Boolean(
           value &&
             typeof value === 'object' &&
             Symbol.asyncIterator in value &&
-            typeof (value as Record<PropertyKey, unknown>)[
-              Symbol.asyncIterator
-            ] === 'function'
+            typeof (value as Record<PropertyKey, unknown>)[Symbol.asyncIterator] === 'function'
         );
       };
 
@@ -117,10 +110,7 @@ describe('ClaudeCodeLanguageModel', () => {
           const iterator = prompt[Symbol.asyncIterator]();
           promptContentPromise = iterator
             .next()
-            .then(
-              ({ value }) =>
-                (value as SDKUserMessage | undefined)?.message?.content
-            );
+            .then(({ value }) => (value as SDKUserMessage | undefined)?.message?.content);
         }
         return mockResponse as any;
       });
@@ -141,10 +131,7 @@ describe('ClaudeCodeLanguageModel', () => {
       const content = await promptContentPromise!;
       expect(Array.isArray(content)).toBe(true);
       expect(content).toHaveLength(2);
-      expect(content[0]).toEqual({
-        type: 'text',
-        text: 'Human: Describe this image.',
-      });
+      expect(content[0]).toEqual({ type: 'text', text: 'Human: Describe this image.' });
       expect(content[1]).toEqual({
         type: 'image',
         source: {
@@ -196,9 +183,7 @@ describe('ClaudeCodeLanguageModel', () => {
       const promise = model.doGenerate({
         prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
       } as any);
-      await expect(promise).rejects.toThrow(
-        /cannot be used with permissionPromptToolName/
-      );
+      await expect(promise).rejects.toThrow(/cannot be used with permissionPromptToolName/);
     });
     it('should pass through hooks and canUseTool to SDK query options', async () => {
       const preToolHook = async () => ({ continue: true });
@@ -356,9 +341,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Say hello' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
       });
 
       expect(result.content).toEqual([{ type: 'text', text: 'Hello, world!' }]);
@@ -394,9 +377,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doGenerate({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Complex task' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Complex task' }] }],
       });
 
       expect(result.finishReason).toBe('length');
@@ -415,9 +396,7 @@ describe('ClaudeCodeLanguageModel', () => {
       abortController.abort(abortReason);
 
       const promise = model.doGenerate({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Test abort' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test abort' }] }],
         abortSignal: abortController.signal,
       });
 
@@ -459,9 +438,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Say hello' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Say hello' }] }],
       });
 
       const chunks: any[] = [];
@@ -585,9 +562,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Return JSON' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return JSON' }] }],
         temperature: 0.5, // This will trigger a warning
         responseFormat: { type: 'json' }, // Add responseFormat to trigger JSON mode
       });
@@ -652,9 +627,7 @@ describe('ClaudeCodeLanguageModel', () => {
           yield {
             type: 'assistant',
             message: {
-              content: [
-                { type: 'text', text: 'Here is the JSON: {"a": 1, "b": ' },
-              ],
+              content: [{ type: 'text', text: 'Here is the JSON: {"a": 1, "b": ' }],
             },
           };
           yield {
@@ -678,12 +651,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const result = await model.doStream({
-        prompt: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'Return invalid JSON' }],
-          },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Return invalid JSON' }] }],
         responseFormat: { type: 'json' }, // Add responseFormat to trigger JSON mode
       });
 
@@ -778,9 +746,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'List files' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'List files' }] }],
       });
 
       const events: ExtendedStreamPart[] = [];
@@ -792,15 +758,9 @@ describe('ClaudeCodeLanguageModel', () => {
         events.push(value);
       }
 
-      const toolInputStart = events.find(
-        (event) => event.type === 'tool-input-start'
-      );
-      const toolInputDelta = events.find(
-        (event) => event.type === 'tool-input-delta'
-      );
-      const toolInputEnd = events.find(
-        (event) => event.type === 'tool-input-end'
-      );
+      const toolInputStart = events.find((event) => event.type === 'tool-input-start');
+      const toolInputDelta = events.find((event) => event.type === 'tool-input-delta');
+      const toolInputEnd = events.find((event) => event.type === 'tool-input-end');
       const toolCall = events.find((event) => event.type === 'tool-call');
       const toolResult = events.find((event) => event.type === 'tool-result');
 
@@ -822,9 +782,7 @@ describe('ClaudeCodeLanguageModel', () => {
         id: toolUseId,
       });
 
-      expect(events.indexOf(toolInputDelta!)).toBeLessThan(
-        events.indexOf(toolInputEnd!)
-      );
+      expect(events.indexOf(toolInputDelta!)).toBeLessThan(events.indexOf(toolInputEnd!));
 
       expect(toolCall).toMatchObject({
         type: 'tool-call',
@@ -839,12 +797,8 @@ describe('ClaudeCodeLanguageModel', () => {
         },
       });
 
-      expect(events.indexOf(toolInputEnd!)).toBeLessThan(
-        events.indexOf(toolCall!)
-      );
-      expect(events.indexOf(toolCall!)).toBeLessThan(
-        events.indexOf(toolResult!)
-      );
+      expect(events.indexOf(toolInputEnd!)).toBeLessThan(events.indexOf(toolCall!));
+      expect(events.indexOf(toolCall!)).toBeLessThan(events.indexOf(toolResult!));
 
       expect(toolResult).toMatchObject({
         type: 'tool-result',
@@ -897,9 +851,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Read file' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Read file' }] }],
       });
 
       const events: ExtendedStreamPart[] = [];
@@ -910,18 +862,10 @@ describe('ClaudeCodeLanguageModel', () => {
         events.push(value);
       }
 
-      const toolInputStartIndex = events.findIndex(
-        (event) => event.type === 'tool-input-start'
-      );
-      const toolInputEndIndex = events.findIndex(
-        (event) => event.type === 'tool-input-end'
-      );
-      const toolCallIndex = events.findIndex(
-        (event) => event.type === 'tool-call'
-      );
-      const toolResultIndex = events.findIndex(
-        (event) => event.type === 'tool-result'
-      );
+      const toolInputStartIndex = events.findIndex((event) => event.type === 'tool-input-start');
+      const toolInputEndIndex = events.findIndex((event) => event.type === 'tool-input-end');
+      const toolCallIndex = events.findIndex((event) => event.type === 'tool-call');
+      const toolResultIndex = events.findIndex((event) => event.type === 'tool-result');
       const finishIndex = events.findIndex((event) => event.type === 'finish');
 
       expect(toolInputStartIndex).toBeGreaterThan(-1);
@@ -987,12 +931,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'Read missing file' }],
-          },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Read missing file' }] }],
       } as any);
 
       const events: ExtendedStreamPart[] = [];
@@ -1022,9 +961,7 @@ describe('ClaudeCodeLanguageModel', () => {
         providerExecuted: true,
       });
 
-      expect(events.indexOf(toolCall!)).toBeLessThan(
-        events.indexOf(toolError!)
-      );
+      expect(events.indexOf(toolCall!)).toBeLessThan(events.indexOf(toolError!));
     });
 
     it('emits only one tool-call for multiple tool-result chunks', async () => {
@@ -1090,9 +1027,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Run command' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Run command' }] }],
       } as any);
 
       const events: ExtendedStreamPart[] = [];
@@ -1159,12 +1094,8 @@ describe('ClaudeCodeLanguageModel', () => {
         events.push(value);
       }
 
-      const inputStartIndex = events.findIndex(
-        (e) => e.type === 'tool-input-start'
-      );
-      const inputEndIndex = events.findIndex(
-        (e) => e.type === 'tool-input-end'
-      );
+      const inputStartIndex = events.findIndex((e) => e.type === 'tool-input-start');
+      const inputEndIndex = events.findIndex((e) => e.type === 'tool-input-end');
       const callIndex = events.findIndex((e) => e.type === 'tool-call');
       const resultIndex = events.findIndex((e) => e.type === 'tool-result');
 
@@ -1210,12 +1141,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'Large input test' }],
-          },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Large input test' }] }],
       } as any);
 
       const events: ExtendedStreamPart[] = [];
@@ -1264,12 +1190,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'Large delta test' }],
-          },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Large delta test' }] }],
       } as any);
 
       const events: ExtendedStreamPart[] = [];
@@ -1297,12 +1218,7 @@ describe('ClaudeCodeLanguageModel', () => {
             type: 'assistant',
             message: {
               content: [
-                {
-                  type: 'tool_use',
-                  id: toolUseId,
-                  name: toolName,
-                  input: { arg: 'initial' },
-                },
+                { type: 'tool_use', id: toolUseId, name: toolName, input: { arg: 'initial' } },
               ],
             },
           };
@@ -1311,12 +1227,7 @@ describe('ClaudeCodeLanguageModel', () => {
             type: 'assistant',
             message: {
               content: [
-                {
-                  type: 'tool_use',
-                  id: toolUseId,
-                  name: toolName,
-                  input: { arg: 'replaced' },
-                },
+                { type: 'tool_use', id: toolUseId, name: toolName, input: { arg: 'replaced' } },
               ],
             },
           };
@@ -1362,13 +1273,14 @@ describe('ClaudeCodeLanguageModel', () => {
           yield {
             type: 'assistant',
             message: {
+              content: [{ type: 'tool_use', id: toolUseId, name: toolName, input: { file: 'x' } }],
+            },
+          };
+          yield {
+            type: 'user',
+            message: {
               content: [
-                {
-                  type: 'tool_use',
-                  id: toolUseId,
-                  name: toolName,
-                  input: { file: 'x' },
-                },
+                { type: 'tool_error', tool_use_id: toolUseId, name: toolName, error: 'e1' },
               ],
             },
           };
@@ -1376,25 +1288,7 @@ describe('ClaudeCodeLanguageModel', () => {
             type: 'user',
             message: {
               content: [
-                {
-                  type: 'tool_error',
-                  tool_use_id: toolUseId,
-                  name: toolName,
-                  error: 'e1',
-                },
-              ],
-            },
-          };
-          yield {
-            type: 'user',
-            message: {
-              content: [
-                {
-                  type: 'tool_error',
-                  tool_use_id: toolUseId,
-                  name: toolName,
-                  error: 'e2',
-                },
+                { type: 'tool_error', tool_use_id: toolUseId, name: toolName, error: 'e2' },
               ],
             },
           };
@@ -1438,12 +1332,7 @@ describe('ClaudeCodeLanguageModel', () => {
             message: {
               content: [
                 { type: 'tool_use', id: id1, name: 'Read', input: { p: 'a' } },
-                {
-                  type: 'tool_use',
-                  id: id2,
-                  name: 'Bash',
-                  input: { c: 'echo' },
-                },
+                { type: 'tool_use', id: id2, name: 'Bash', input: { c: 'echo' } },
               ],
             },
           };
@@ -1507,21 +1396,11 @@ describe('ClaudeCodeLanguageModel', () => {
       const toolUseId = 'tool_interleave';
       const mockResponse = {
         async *[Symbol.asyncIterator]() {
-          yield {
-            type: 'assistant',
-            message: { content: [{ type: 'text', text: 'Intro ' }] },
-          };
+          yield { type: 'assistant', message: { content: [{ type: 'text', text: 'Intro ' }] } };
           yield {
             type: 'assistant',
             message: {
-              content: [
-                {
-                  type: 'tool_use',
-                  id: toolUseId,
-                  name: 'Read',
-                  input: { p: '/f' },
-                },
-              ],
+              content: [{ type: 'tool_use', id: toolUseId, name: 'Read', input: { p: '/f' } }],
             },
           };
           yield {
@@ -1538,10 +1417,7 @@ describe('ClaudeCodeLanguageModel', () => {
               ],
             },
           };
-          yield {
-            type: 'assistant',
-            message: { content: [{ type: 'text', text: ' Outro' }] },
-          };
+          yield { type: 'assistant', message: { content: [{ type: 'text', text: ' Outro' }] } };
           yield {
             type: 'result',
             subtype: 'success',
@@ -1598,9 +1474,7 @@ describe('ClaudeCodeLanguageModel', () => {
       vi.mocked(mockQuery).mockReturnValue(mockResponse as any);
 
       const { stream } = await model.doStream({
-        prompt: [
-          { role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] },
-        ],
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Generate JSON' }] }],
         responseFormat: { type: 'json', schema: {} } as any,
       } as any);
 

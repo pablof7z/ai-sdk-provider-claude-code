@@ -1,5 +1,5 @@
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-code';
-import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-code';
+import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
+import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-agent-sdk';
 import { type ZodRawShape, type ZodObject } from 'zod';
 
 /**
@@ -18,29 +18,17 @@ export function createCustomMcpServer<
     {
       description: string;
       inputSchema: ZodObject<ZodRawShape>;
-      handler: (
-        args: Record<string, unknown>,
-        extra: unknown
-      ) => Promise<MinimalCallToolResult>;
+      handler: (args: Record<string, unknown>, extra: unknown) => Promise<MinimalCallToolResult>;
     }
   >,
->(config: {
-  name: string;
-  version?: string;
-  tools: Tools;
-}): McpSdkServerConfigWithInstance {
+>(config: { name: string; version?: string; tools: Tools }): McpSdkServerConfigWithInstance {
   const defs = Object.entries(config.tools).map(([name, def]) =>
     tool(
       name,
       def.description,
       def.inputSchema.shape as ZodRawShape,
-      (args: Record<string, unknown>, extra: unknown) =>
-        def.handler(args, extra)
+      (args: Record<string, unknown>, extra: unknown) => def.handler(args, extra)
     )
   );
-  return createSdkMcpServer({
-    name: config.name,
-    version: config.version,
-    tools: defs,
-  });
+  return createSdkMcpServer({ name: config.name, version: config.version, tools: defs });
 }

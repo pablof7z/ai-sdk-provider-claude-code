@@ -1,12 +1,18 @@
 /**
  * Custom configuration example for Claude Code AI SDK Provider
- * 
+ *
  * This example shows how to configure the provider and models
  * with specific settings for your use case.
  */
 
 import { generateText } from 'ai';
 import { createClaudeCode } from '../dist/index.js';
+// NOTE: Migrating to Claude Agent SDK:
+// - System prompt is not applied by default
+// - Filesystem settings (CLAUDE.md, settings.json) are not loaded by default
+// To restore old behavior, set:
+//   systemPrompt: { type: 'preset', preset: 'claude_code' }
+//   settingSources: ['user', 'project', 'local']
 
 async function main() {
   console.log('🔧 Testing custom configurations...\n');
@@ -19,7 +25,7 @@ async function main() {
         permissionMode: 'bypassPermissions',
         // Set working directory for file operations
         cwd: process.cwd(),
-      }
+      },
     });
 
     console.log('1️⃣ Using provider with default settings:');
@@ -32,7 +38,7 @@ async function main() {
     // Example 2: Override settings for specific model instance
     console.log('\n2️⃣ Model with custom settings:');
     const { text: response2 } = await generateText({
-      model: customProvider('sonnet', { 
+      model: customProvider('sonnet', {
         // These settings override the provider defaults
         permissionMode: 'default', // Ask for permissions
         maxTurns: 5, // Limit conversation turns
@@ -60,23 +66,22 @@ async function main() {
     console.log('\n4️⃣ Using different models:');
     const opusModel = customProvider('opus');
     const sonnetModel = customProvider('sonnet');
-    
+
     // Quick comparison
     const prompt = 'Explain quantum computing in exactly 10 words.';
-    
+
     const { text: opusResponse } = await generateText({
       model: opusModel,
       prompt,
     });
-    
+
     const { text: sonnetResponse } = await generateText({
       model: sonnetModel,
       prompt,
     });
-    
+
     console.log('Opus:', opusResponse);
     console.log('Sonnet:', sonnetResponse);
-
   } catch (error) {
     console.error('Error:', error);
   }

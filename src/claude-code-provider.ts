@@ -1,9 +1,6 @@
 import type { LanguageModelV2, ProviderV2 } from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
-import {
-  ClaudeCodeLanguageModel,
-  type ClaudeCodeModelId,
-} from './claude-code-language-model.js';
+import { ClaudeCodeLanguageModel, type ClaudeCodeModelId } from './claude-code-language-model.js';
 import type { ClaudeCodeSettings } from './types.js';
 import { validateSettings } from './validation.js';
 import { getLogger } from './logger.js';
@@ -42,10 +39,7 @@ export interface ClaudeCodeProvider extends ProviderV2 {
    * @param settings - Optional settings to configure the model
    * @returns A language model instance
    */
-  languageModel(
-    modelId: ClaudeCodeModelId,
-    settings?: ClaudeCodeSettings
-  ): LanguageModelV2;
+  languageModel(modelId: ClaudeCodeModelId, settings?: ClaudeCodeSettings): LanguageModelV2;
 
   /**
    * Alias for `languageModel()` to maintain compatibility with AI SDK patterns.
@@ -54,10 +48,7 @@ export interface ClaudeCodeProvider extends ProviderV2 {
    * @param settings - Optional settings to configure the model
    * @returns A language model instance
    */
-  chat(
-    modelId: ClaudeCodeModelId,
-    settings?: ClaudeCodeSettings
-  ): LanguageModelV2;
+  chat(modelId: ClaudeCodeModelId, settings?: ClaudeCodeSettings): LanguageModelV2;
 
   imageModel(modelId: string): never;
 }
@@ -103,9 +94,7 @@ export interface ClaudeCodeProviderSettings {
  * const model = provider('opus');
  * ```
  */
-export function createClaudeCode(
-  options: ClaudeCodeProviderSettings = {}
-): ClaudeCodeProvider {
+export function createClaudeCode(options: ClaudeCodeProviderSettings = {}): ClaudeCodeProvider {
   // Get logger from default settings if provided
   const logger = getLogger(options.defaultSettings?.logger);
 
@@ -113,14 +102,10 @@ export function createClaudeCode(
   if (options.defaultSettings) {
     const validation = validateSettings(options.defaultSettings);
     if (!validation.valid) {
-      throw new Error(
-        `Invalid default settings: ${validation.errors.join(', ')}`
-      );
+      throw new Error(`Invalid default settings: ${validation.errors.join(', ')}`);
     }
     if (validation.warnings.length > 0) {
-      validation.warnings.forEach((warning) =>
-        logger.warn(`Claude Code Provider: ${warning}`)
-      );
+      validation.warnings.forEach((warning) => logger.warn(`Claude Code Provider: ${warning}`));
     }
   }
 
@@ -146,14 +131,9 @@ export function createClaudeCode(
     });
   };
 
-  const provider = function (
-    modelId: ClaudeCodeModelId,
-    settings?: ClaudeCodeSettings
-  ) {
+  const provider = function (modelId: ClaudeCodeModelId, settings?: ClaudeCodeSettings) {
     if (new.target) {
-      throw new Error(
-        'The Claude Code model function cannot be called with the new keyword.'
-      );
+      throw new Error('The Claude Code model function cannot be called with the new keyword.');
     }
 
     return createModel(modelId, settings);

@@ -2,17 +2,23 @@
 
 /**
  * Example: Handling Long-Running Tasks
- * 
+ *
  * Shows how to implement custom timeouts using AbortSignal
  * for complex tasks that may take longer than usual.
  */
 
 import { generateText } from 'ai';
 import { claudeCode } from '../dist/index.js';
+// NOTE: Migrating to Claude Agent SDK:
+// - System prompt is not applied by default
+// - Filesystem settings (CLAUDE.md, settings.json) are not loaded by default
+// To restore old behavior, set:
+//   systemPrompt: { type: 'preset', preset: 'claude_code' }
+//   settingSources: ['user', 'project', 'local']
 
 async function withTimeout() {
   console.log('🕐 Example 1: Custom timeout for long task\n');
-  
+
   // Create an AbortController with a 5-minute timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -21,7 +27,7 @@ async function withTimeout() {
 
   try {
     const { text } = await generateText({
-      model: claudeCode('opus'),
+      model: claudeCode('sonnet'),
       prompt: 'Analyze the implications of quantum computing on cryptography...',
       abortSignal: controller.signal,
     });
@@ -30,7 +36,7 @@ async function withTimeout() {
     console.log('Response:', text);
   } catch (error: any) {
     clearTimeout(timeoutId);
-    
+
     if (error.name === 'AbortError' || error.message?.includes('timeout')) {
       console.log('❌ Request timed out after 5 minutes');
       console.log('Consider breaking the task into smaller parts');
@@ -42,9 +48,9 @@ async function withTimeout() {
 
 async function withUserCancellation() {
   console.log('\n🛑 Example 2: User-cancellable request\n');
-  
+
   const controller = new AbortController();
-  
+
   // Simulate user cancellation after 2 seconds
   setTimeout(() => {
     console.log('User clicked cancel...');
@@ -53,7 +59,7 @@ async function withUserCancellation() {
 
   try {
     console.log('Starting long task (will be cancelled in 2 seconds)...');
-    
+
     const { text } = await generateText({
       model: claudeCode('sonnet'),
       prompt: 'Write a comprehensive guide to machine learning...',
@@ -72,14 +78,14 @@ async function withUserCancellation() {
 
 async function withGracefulTimeout() {
   console.log('\n⏰ Example 3: Graceful timeout with retry option\n');
-  
+
   async function attemptWithTimeout(timeoutMs: number) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const { text } = await generateText({
-        model: claudeCode('opus'),
+        model: claudeCode('sonnet'),
         prompt: 'Explain the theory of relativity',
         abortSignal: controller.signal,
       });
@@ -88,7 +94,7 @@ async function withGracefulTimeout() {
       return { success: true, text };
     } catch (error: any) {
       clearTimeout(timeoutId);
-      
+
       if (error.name === 'AbortError') {
         return { success: false, timeout: true };
       }
@@ -99,10 +105,10 @@ async function withGracefulTimeout() {
   // Try with 30-second timeout first
   console.log('Attempting with 30-second timeout...');
   let result = await attemptWithTimeout(30000);
-  
+
   if (!result.success && result.timeout) {
     console.log('⏱️ First attempt timed out, trying with longer timeout...');
-    
+
     // Retry with 2-minute timeout
     result = await attemptWithTimeout(120000);
   }
@@ -120,21 +126,21 @@ function createTimeoutController(ms: number, reason = 'Request timeout'): AbortC
   const timeoutId = setTimeout(() => {
     controller.abort(new Error(`${reason} after ${ms}ms`));
   }, ms);
-  
+
   // Add cleanup method
   (controller as any).clearTimeout = () => clearTimeout(timeoutId);
-  
+
   return controller;
 }
 
 async function withHelper() {
   console.log('\n🔧 Example 4: Using timeout helper\n');
-  
+
   const controller = createTimeoutController(60000, 'Complex analysis timeout');
-  
+
   try {
     const { text } = await generateText({
-      model: claudeCode('opus'),
+      model: claudeCode('sonnet'),
       prompt: 'Analyze this code for security vulnerabilities...',
       abortSignal: controller.signal,
     });
@@ -161,7 +167,7 @@ async function main() {
   console.log('- Set custom timeouts based on task complexity');
   console.log('- Always clear timeouts on success');
   console.log('- Consider retry logic for timeout scenarios');
-  console.log('- Claude Opus 4 may need 5-10 minute timeouts for complex reasoning');
+  console.log('- Claude Sonnet 4.5 may need 5-10 minute timeouts for complex reasoning');
 }
 
 main().catch(console.error);

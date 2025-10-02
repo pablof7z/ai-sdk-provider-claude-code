@@ -1,5 +1,5 @@
 import type { ModelMessage } from 'ai';
-import type { SDKUserMessage } from '@anthropic-ai/claude-code';
+import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
 type SDKUserContentPart = SDKUserMessage['message']['content'][number];
 
@@ -7,26 +7,18 @@ interface StreamingSegment {
   formatted: string;
 }
 
-const IMAGE_URL_WARNING =
-  'Image URLs are not supported by this provider; supply base64/data URLs.';
-const IMAGE_CONVERSION_WARNING =
-  'Unable to convert image content; supply base64/data URLs.';
+const IMAGE_URL_WARNING = 'Image URLs are not supported by this provider; supply base64/data URLs.';
+const IMAGE_CONVERSION_WARNING = 'Unable to convert image content; supply base64/data URLs.';
 
 function normalizeBase64(base64: string): string {
   return base64.replace(/\s+/g, '');
 }
 
 function isImageMimeType(mimeType?: string): boolean {
-  return (
-    typeof mimeType === 'string' &&
-    mimeType.trim().toLowerCase().startsWith('image/')
-  );
+  return typeof mimeType === 'string' && mimeType.trim().toLowerCase().startsWith('image/');
 }
 
-function createImageContent(
-  mediaType: string,
-  data: string
-): SDKUserContentPart | undefined {
+function createImageContent(mediaType: string, data: string): SDKUserContentPart | undefined {
   const trimmedType = mediaType.trim();
   const trimmedData = normalizeBase64(data.trim());
 
@@ -57,10 +49,7 @@ function parseObjectImage(
 ): SDKUserContentPart | undefined {
   const data = typeof imageObj.data === 'string' ? imageObj.data : undefined;
   const mimeType = extractMimeType(
-    imageObj.mimeType ??
-      imageObj.mediaType ??
-      imageObj.media_type ??
-      fallbackMimeType
+    imageObj.mimeType ?? imageObj.mediaType ?? imageObj.media_type ?? fallbackMimeType
   );
   if (!data || !mimeType) {
     return undefined;
@@ -102,10 +91,7 @@ function parseStringImage(
   return { warning: IMAGE_CONVERSION_WARNING };
 }
 
-function parseImagePart(part: unknown): {
-  content?: SDKUserContentPart;
-  warning?: string;
-} {
+function parseImagePart(part: unknown): { content?: SDKUserContentPart; warning?: string } {
   if (!part || typeof part !== 'object') {
     return { warning: IMAGE_CONVERSION_WARNING };
   }
@@ -118,24 +104,17 @@ function parseImagePart(part: unknown): {
   }
 
   if (imageValue && typeof imageValue === 'object') {
-    const content = parseObjectImage(
-      imageValue as Record<string, unknown>,
-      mimeType
-    );
+    const content = parseObjectImage(imageValue as Record<string, unknown>, mimeType);
     return content ? { content } : { warning: IMAGE_CONVERSION_WARNING };
   }
 
   return { warning: IMAGE_CONVERSION_WARNING };
 }
 
-function convertBinaryToBase64(
-  data: Uint8Array | ArrayBuffer
-): string | undefined {
+function convertBinaryToBase64(data: Uint8Array | ArrayBuffer): string | undefined {
   if (typeof Buffer !== 'undefined') {
     const buffer =
-      data instanceof Uint8Array
-        ? Buffer.from(data)
-        : Buffer.from(new Uint8Array(data));
+      data instanceof Uint8Array ? Buffer.from(data) : Buffer.from(new Uint8Array(data));
     return buffer.toString('base64');
   }
 
@@ -159,10 +138,7 @@ type FileLikePart = {
   data?: unknown;
 };
 
-function parseFilePart(part: FileLikePart): {
-  content?: SDKUserContentPart;
-  warning?: string;
-} {
+function parseFilePart(part: FileLikePart): { content?: SDKUserContentPart; warning?: string } {
   const mimeType = extractMimeType(part.mediaType ?? part.mimeType);
   if (!mimeType || !isImageMimeType(mimeType)) {
     return {};
@@ -212,9 +188,7 @@ function parseFilePart(part: FileLikePart): {
  */
 export function convertToClaudeCodeMessages(
   prompt: readonly ModelMessage[],
-  mode: { type: 'regular' | 'object-json' | 'object-tool' } = {
-    type: 'regular',
-  },
+  mode: { type: 'regular' | 'object-json' | 'object-tool' } = { type: 'regular' },
   jsonSchema?: unknown
 ): {
   messagesPrompt: string;
@@ -235,10 +209,7 @@ export function convertToClaudeCodeMessages(
     return streamingSegments.length - 1;
   };
 
-  const addImageForSegment = (
-    segmentIndex: number,
-    content: SDKUserContentPart
-  ): void => {
+  const addImageForSegment = (segmentIndex: number, content: SDKUserContentPart): void => {
     hasImageParts = true;
     if (!imageMap.has(segmentIndex)) {
       imageMap.set(segmentIndex, []);
@@ -250,10 +221,7 @@ export function convertToClaudeCodeMessages(
     switch (message.role) {
       case 'system':
         systemPrompt = message.content;
-        if (
-          typeof message.content === 'string' &&
-          message.content.trim().length > 0
-        ) {
+        if (typeof message.content === 'string' && message.content.trim().length > 0) {
           addSegment(message.content);
         } else {
           addSegment('');
@@ -271,9 +239,7 @@ export function convertToClaudeCodeMessages(
             .map((part) => part.text)
             .join('\n');
 
-          const segmentIndex = addSegment(
-            textParts ? `Human: ${textParts}` : ''
-          );
+          const segmentIndex = addSegment(textParts ? `Human: ${textParts}` : '');
 
           if (textParts) {
             messages.push(textParts);
@@ -314,9 +280,7 @@ export function convertToClaudeCodeMessages(
           }
 
           // Handle tool calls if present
-          const toolCalls = message.content.filter(
-            (part) => part.type === 'tool-call'
-          );
+          const toolCalls = message.content.filter((part) => part.type === 'tool-call');
           if (toolCalls.length > 0) {
             // For now, we'll just note that tool calls were made
             assistantContent += `\n[Tool calls made]`;
@@ -332,9 +296,7 @@ export function convertToClaudeCodeMessages(
         // Tool results could be included in the conversation
         for (const tool of message.content) {
           const resultText =
-            tool.output.type === 'text'
-              ? tool.output.value
-              : JSON.stringify(tool.output.value);
+            tool.output.type === 'text' ? tool.output.value : JSON.stringify(tool.output.value);
           const formattedToolResult = `Tool Result (${tool.toolName}): ${resultText}`;
           messages.push(formattedToolResult);
           addSegment(formattedToolResult);
@@ -371,9 +333,7 @@ export function convertToClaudeCodeMessages(
     // Combine system prompt with messages
     if (finalPrompt) {
       const joinedMessages = formattedMessages.join('\n\n');
-      finalPrompt = joinedMessages
-        ? `${finalPrompt}\n\n${joinedMessages}`
-        : finalPrompt;
+      finalPrompt = joinedMessages ? `${finalPrompt}\n\n${joinedMessages}` : finalPrompt;
     } else {
       finalPrompt = formattedMessages.join('\n\n');
     }
@@ -443,10 +403,7 @@ ${finalPrompt}
 
 Remember: Your ENTIRE response must be ONLY the JSON object, starting with { and ending with }`;
 
-    streamingParts = [
-      { type: 'text', text: finalPrompt },
-      ...imagePartsInOrder,
-    ];
+    streamingParts = [{ type: 'text', text: finalPrompt }, ...imagePartsInOrder];
   }
 
   return {

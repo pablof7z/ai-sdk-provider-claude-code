@@ -15,10 +15,7 @@ export { createClaudeCode, claudeCode } from './claude-code-provider.js';
  * @see {@link ClaudeCodeProvider} for the provider interface
  * @see {@link ClaudeCodeProviderSettings} for provider configuration options
  */
-export type {
-  ClaudeCodeProvider,
-  ClaudeCodeProviderSettings,
-} from './claude-code-provider.js';
+export type { ClaudeCodeProvider, ClaudeCodeProviderSettings } from './claude-code-provider.js';
 
 /**
  * Language model implementation for Claude Code.
@@ -43,7 +40,7 @@ export type {
 export type { ClaudeCodeSettings, Logger } from './types.js';
 
 // Convenience re-exports from the SDK for custom tools and hooks
-export { createSdkMcpServer, tool } from '@anthropic-ai/claude-code';
+export { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 export { createCustomMcpServer } from './mcp-helpers.js';
 export type {
   HookEvent,
@@ -63,7 +60,7 @@ export type {
   PermissionRuleValue,
   McpServerConfig,
   McpSdkServerConfigWithInstance,
-} from '@anthropic-ai/claude-code';
+} from '@anthropic-ai/claude-agent-sdk';
 
 /**
  * Error handling utilities for Claude Code.

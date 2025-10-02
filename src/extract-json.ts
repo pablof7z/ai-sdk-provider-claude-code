@@ -37,11 +37,7 @@ export function extractJson(text: string): string {
     return text;
   }
   const start =
-    firstArr === -1
-      ? firstObj
-      : firstObj === -1
-        ? firstArr
-        : Math.min(firstObj, firstArr);
+    firstArr === -1 ? firstObj : firstObj === -1 ? firstArr : Math.min(firstObj, firstArr);
   content = content.slice(start);
 
   // Try to parse the entire string with jsonc-parser

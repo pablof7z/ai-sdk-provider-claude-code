@@ -26,6 +26,16 @@ export const claudeCodeSettingsSchema = z
     pathToClaudeCodeExecutable: z.string().optional(),
     customSystemPrompt: z.string().optional(),
     appendSystemPrompt: z.string().optional(),
+    systemPrompt: z
+      .union([
+        z.string(),
+        z.object({
+          type: z.literal('preset'),
+          preset: z.literal('claude_code'),
+          append: z.string().optional(),
+        }),
+      ])
+      .optional(),
     maxTurns: z.number().int().min(1).max(100).optional(),
     maxThinkingTokens: z.number().int().positive().max(100000).optional(),
     cwd: z
@@ -43,14 +53,13 @@ export const claudeCodeSettingsSchema = z
       .optional(),
     executable: z.enum(['bun', 'deno', 'node']).optional(),
     executableArgs: z.array(z.string()).optional(),
-    permissionMode: z
-      .enum(['default', 'acceptEdits', 'bypassPermissions', 'plan'])
-      .optional(),
+    permissionMode: z.enum(['default', 'acceptEdits', 'bypassPermissions', 'plan']).optional(),
     permissionPromptToolName: z.string().optional(),
     continue: z.boolean().optional(),
     resume: z.string().optional(),
     allowedTools: z.array(z.string()).optional(),
     disallowedTools: z.array(z.string()).optional(),
+    settingSources: z.array(z.enum(['user', 'project', 'local'])).optional(),
     streamingInput: z.enum(['auto', 'always', 'off']).optional(),
     // Hooks and tool-permission callback (permissive validation of shapes)
     canUseTool: z
@@ -105,6 +114,24 @@ export const claudeCodeSettingsSchema = z
     verbose: z.boolean().optional(),
     logger: z.union([z.literal(false), loggerFunctionSchema]).optional(),
     env: z.record(z.string(), z.string().optional()).optional(),
+    additionalDirectories: z.array(z.string()).optional(),
+    agents: z
+      .record(
+        z.string(),
+        z.object({
+          description: z.string(),
+          tools: z.array(z.string()).optional(),
+          prompt: z.string(),
+          model: z.enum(['sonnet', 'opus', 'haiku', 'inherit']).optional(),
+        })
+      )
+      .optional(),
+    includePartialMessages: z.boolean().optional(),
+    fallbackModel: z.string().optional(),
+    forkSession: z.boolean().optional(),
+    stderr: z.function().args(z.string()).returns(z.void()).optional(),
+    strictMcpConfig: z.boolean().optional(),
+    extraArgs: z.record(z.string(), z.union([z.string(), z.null()])).optional(),
   })
   .strict();
 
@@ -174,10 +201,7 @@ export function validateSettings(settings: unknown): {
     }
 
     // Warn about very high thinking tokens
-    if (
-      validSettings.maxThinkingTokens &&
-      validSettings.maxThinkingTokens > 50000
-    ) {
+    if (validSettings.maxThinkingTokens && validSettings.maxThinkingTokens > 50000) {
       warnings.push(
         `Very high maxThinkingTokens (${validSettings.maxThinkingTokens}) may increase response time`
       );
@@ -194,10 +218,7 @@ export function validateSettings(settings: unknown): {
     const validateToolNames = (tools: string[], type: string) => {
       tools.forEach((tool) => {
         // Basic validation - tool names should be alphanumeric with optional specifiers
-        if (
-          !/^[a-zA-Z_][a-zA-Z0-9_]*(\([^)]*\))?$/.test(tool) &&
-          !tool.startsWith('mcp__')
-        ) {
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*(\([^)]*\))?$/.test(tool) && !tool.startsWith('mcp__')) {
           warnings.push(`Unusual ${type} tool name format: '${tool}'`);
         }
       });
@@ -213,9 +234,7 @@ export function validateSettings(settings: unknown): {
 
     return { valid: true, warnings, errors };
   } catch (error) {
-    errors.push(
-      `Validation error: ${error instanceof Error ? error.message : String(error)}`
-    );
+    errors.push(`Validation error: ${error instanceof Error ? error.message : String(error)}`);
     return { valid: false, warnings, errors };
   }
 }

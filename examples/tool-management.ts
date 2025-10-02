@@ -1,17 +1,23 @@
 /**
  * Example: Tool Management
- * 
+ *
  * This example demonstrates how to manage tool permissions for Claude Code.
  * The allowedTools and disallowedTools flags work for BOTH:
  * - Built-in Claude tools (Bash, Edit, Read, Write, etc.)
  * - MCP tools (mcp__serverName__toolName format)
- * 
+ *
  * These are session-only permission overrides that use the same rule syntax
  * as settings.json permissions.
  */
 
 import { streamText } from 'ai';
 import { createClaudeCode } from '../dist/index.js';
+// NOTE: Migrating to Claude Agent SDK:
+// - System prompt is not applied by default
+// - Filesystem settings (CLAUDE.md, settings.json) are not loaded by default
+// To restore old behavior, set when creating model instances, e.g.:
+//   systemPrompt: { type: 'preset', preset: 'claude_code' }
+//   settingSources: ['user', 'project', 'local']
 
 async function testToolManagement() {
   console.log('🔧 Testing Claude Code Tool Management\n');
@@ -19,13 +25,13 @@ async function testToolManagement() {
   // 1. Default behavior - all tools allowed
   console.log('1️⃣  Default (all tools allowed)');
   const defaultClaude = createClaudeCode();
-  
+
   try {
     const result1 = streamText({
       model: defaultClaude('sonnet'),
       prompt: 'What is 2 + 2? Just give me the number.',
     });
-    
+
     // Collect text from stream
     let response1 = '';
     for await (const chunk of result1.textStream) {
@@ -42,7 +48,7 @@ async function testToolManagement() {
   const bashOnlyClaude = createClaudeCode({
     defaultSettings: {
       allowedTools: ['Bash(echo:*)', 'Bash(date)', 'Bash(pwd)'],
-    }
+    },
   });
 
   try {
@@ -50,7 +56,7 @@ async function testToolManagement() {
       model: bashOnlyClaude('sonnet'),
       prompt: 'Can you show me the current date? Use the date command.',
     });
-    
+
     // Collect text from stream
     let response2 = '';
     for await (const chunk of result2.textStream) {
@@ -67,7 +73,7 @@ async function testToolManagement() {
   const readOnlyClaude = createClaudeCode({
     defaultSettings: {
       disallowedTools: ['Write', 'Edit', 'Delete', 'Bash(rm:*)', 'Bash(sudo:*)'],
-    }
+    },
   });
 
   try {
@@ -75,7 +81,7 @@ async function testToolManagement() {
       model: readOnlyClaude('sonnet'),
       prompt: 'What is the capital of France? Just the city name.',
     });
-    
+
     // Collect text from stream
     let response3 = '';
     for await (const chunk of result3.textStream) {
@@ -97,9 +103,9 @@ async function testToolManagement() {
         'Bash(git log:*)',
         'Bash(git status)',
         'mcp__filesystem__read_file',
-        'mcp__git__status'
+        'mcp__git__status',
       ],
-    }
+    },
   });
 
   try {
@@ -107,7 +113,7 @@ async function testToolManagement() {
       model: mixedClaude('sonnet'),
       prompt: 'What is the result of 5 * 8?',
     });
-    
+
     // Collect text from stream
     let response4 = '';
     for await (const chunk of result4.textStream) {
@@ -124,7 +130,7 @@ async function testToolManagement() {
   const noToolsClaude = createClaudeCode({
     defaultSettings: {
       allowedTools: [], // Empty array = explicit empty allowlist = NO tools allowed
-    }
+    },
   });
 
   try {
@@ -132,7 +138,7 @@ async function testToolManagement() {
       model: noToolsClaude('sonnet'),
       prompt: 'What programming language is this: console.log("Hello")?',
     });
-    
+
     // Collect text from stream
     let response5 = '';
     for await (const chunk of result5.textStream) {
@@ -149,7 +155,7 @@ async function testToolManagement() {
   const baseClaude = createClaudeCode({
     defaultSettings: {
       disallowedTools: ['Bash', 'Write'], // Provider blocks these
-    }
+    },
   });
 
   try {
@@ -160,7 +166,7 @@ async function testToolManagement() {
       }),
       prompt: 'Name a popular web framework.',
     });
-    
+
     // Collect text from stream
     let response6 = '';
     for await (const chunk of result6.textStream) {
@@ -173,7 +179,7 @@ async function testToolManagement() {
   }
 
   console.log('\n✅ Tool management examples completed!');
-  
+
   console.log('\n📝 Key Points:');
   console.log('- Flags work for BOTH built-in tools AND MCP tools');
   console.log('- Same rule syntax as settings.json permissions');
@@ -181,16 +187,16 @@ async function testToolManagement() {
   console.log('- Use specifiers for fine-grained control: Bash(git:*)');
   console.log('- Empty allowedTools ([]) = Explicit empty allowlist = No tools allowed');
   console.log('- Omitting flags entirely = Falls back to normal permission system');
-  
+
   console.log('\n🛠️  Built-in tool names:');
   console.log('- Bash, Edit, Read, Write, Delete, LS, Grep, Glob');
   console.log('- WebFetch, NotebookRead, NotebookEdit');
   console.log('- Use /permissions in Claude to see all available tools');
-  
+
   console.log('\n🔌 MCP tool format:');
   console.log('- mcp__<serverName> (all tools from that server)');
   console.log('- mcp__<serverName>__<toolName> (specific tool)');
-  
+
   console.log('\n🔒 Security patterns:');
   console.log('- Read-only: disallowedTools: ["Write", "Edit", "Delete"]');
   console.log('- No shell: disallowedTools: ["Bash"]');
@@ -203,7 +209,7 @@ testToolManagement()
     console.log('\nAll examples completed successfully!');
     process.exit(0);
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('\nExample failed:', error);
     process.exit(1);
   });

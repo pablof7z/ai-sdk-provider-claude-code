@@ -71,9 +71,7 @@ describe('convertToClaudeCodeMessages', () => {
     ] as CoreMessage[]);
 
     expect(result.warnings).toBeDefined();
-    expect(result.warnings).toContain(
-      'Unable to convert image content; supply base64/data URLs.'
-    );
+    expect(result.warnings).toContain('Unable to convert image content; supply base64/data URLs.');
     expect(result.messagesPrompt).toBe('Human: Look at this:');
     expect(result.hasImageParts).toBe(false);
   });
@@ -84,11 +82,7 @@ describe('convertToClaudeCodeMessages', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'Check this file:' },
-          {
-            type: 'file',
-            data: 'data:text/plain;base64,AQID',
-            mimeType: 'text/plain',
-          },
+          { type: 'file', data: 'data:text/plain;base64,AQID', mimeType: 'text/plain' },
         ],
       },
     ] as any);
@@ -112,9 +106,7 @@ describe('convertToClaudeCodeMessages', () => {
       },
     ] as any);
 
-    expect(result.messagesPrompt).toBe(
-      'Tool Result (calculator): {"answer":42}'
-    );
+    expect(result.messagesPrompt).toBe('Tool Result (calculator): {"answer":42}');
   });
 
   it('should handle tool error messages', () => {

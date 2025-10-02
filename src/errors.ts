@@ -93,15 +93,10 @@ export function createAPICallError({
  * });
  * ```
  */
-export function createAuthenticationError({
-  message,
-}: {
-  message: string;
-}): LoadAPIKeyError {
+export function createAuthenticationError({ message }: { message: string }): LoadAPIKeyError {
   return new LoadAPIKeyError({
     message:
-      message ||
-      'Authentication failed. Please ensure Claude Code SDK is properly authenticated.',
+      message || 'Authentication failed. Please ensure Claude Code SDK is properly authenticated.',
   });
 }
 
@@ -166,10 +161,7 @@ export function createTimeoutError({
  */
 export function isAuthenticationError(error: unknown): boolean {
   if (error instanceof LoadAPIKeyError) return true;
-  if (
-    error instanceof APICallError &&
-    (error.data as ClaudeCodeErrorMetadata)?.exitCode === 401
-  )
+  if (error instanceof APICallError && (error.data as ClaudeCodeErrorMetadata)?.exitCode === 401)
     return true;
   return false;
 }
@@ -193,10 +185,7 @@ export function isAuthenticationError(error: unknown): boolean {
  * ```
  */
 export function isTimeoutError(error: unknown): boolean {
-  if (
-    error instanceof APICallError &&
-    (error.data as ClaudeCodeErrorMetadata)?.code === 'TIMEOUT'
-  )
+  if (error instanceof APICallError && (error.data as ClaudeCodeErrorMetadata)?.code === 'TIMEOUT')
     return true;
   return false;
 }
@@ -219,9 +208,7 @@ export function isTimeoutError(error: unknown): boolean {
  * }
  * ```
  */
-export function getErrorMetadata(
-  error: unknown
-): ClaudeCodeErrorMetadata | undefined {
+export function getErrorMetadata(error: unknown): ClaudeCodeErrorMetadata | undefined {
   if (error instanceof APICallError && error.data) {
     return error.data as ClaudeCodeErrorMetadata;
   }

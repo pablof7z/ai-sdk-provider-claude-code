@@ -1,6 +1,7 @@
 # Community Provider Status Analysis (v5)
 
 ## Overview
+
 This document analyzes the requirements for ai-sdk-provider-claude-code to achieve community provider status in the Vercel AI SDK v5 ecosystem.
 
 ## Current Implementation Status
@@ -8,7 +9,8 @@ This document analyzes the requirements for ai-sdk-provider-claude-code to achie
 ### ✅ What We Have
 
 #### Core Functionality
-- **SDK Integration**: Uses official `@anthropic-ai/claude-code` SDK for all Claude interactions
+
+- **SDK Integration**: Uses official `@anthropic-ai/claude-agent-sdk` for all Claude interactions
 - **Text Generation**: Full support for both streaming and non-streaming text generation with v5 patterns
 - **Object Generation**: Reliable JSON generation through prompt engineering and extraction
 - **Multi-turn Conversations**: Proper message history support with v5 message format
@@ -17,6 +19,7 @@ This document analyzes the requirements for ai-sdk-provider-claude-code to achie
 - **AbortSignal Support**: Standard AI SDK pattern for timeouts and cancellation
 
 #### v5 Specific Features
+
 - **LanguageModelV2 Implementation**: Fully compliant with `specificationVersion: 'v2'`
 - **Stream-Start Event**: Properly emits initial stream event with warnings
 - **Token Usage Naming**: Uses v5 convention (inputTokens, outputTokens, totalTokens)
@@ -24,6 +27,7 @@ This document analyzes the requirements for ai-sdk-provider-claude-code to achie
 - **Promise-based Streaming**: Implements v5's new streaming API pattern
 
 #### Build & Distribution
+
 - **TypeScript**: Full TypeScript support with proper type definitions
 - **Dual Formats**: Both CommonJS and ES Module builds via tsup
 - **Source Maps**: Generated for debugging support
@@ -31,12 +35,14 @@ This document analyzes the requirements for ai-sdk-provider-claude-code to achie
 - **Beta Tag**: Published with `beta` tag on npm
 
 #### Testing
+
 - **Unit Tests**: Comprehensive test coverage with Vitest
 - **Integration Tests**: Full integration test suite
 - **Edge/Node Tests**: Separate configurations for different environments
 - **Examples**: Extensive example collection demonstrating all v5 features
 
 #### Documentation
+
 - **README**: Comprehensive documentation with version compatibility matrix
 - **CHANGELOG**: Proper version history following Keep a Changelog format
 - **Examples README**: Detailed guide for all example files
@@ -110,6 +116,7 @@ ai-sdk-provider-claude-code/
 │   ├── README.md                         # Examples guide
 │   ├── abort-signal.ts                   # Cancellation
 │   ├── basic-usage.ts                    # Simple generation (v5 pattern)
+│   ├── bull.webp                         # Default test image for images.ts
 │   ├── check-cli.ts                      # Setup verification
 │   ├── conversation-history.ts           # Multi-turn conversations (v5 format)
 │   ├── custom-config.ts                  # Configuration options
@@ -118,12 +125,14 @@ ai-sdk-provider-claude-code/
 │   ├── generate-object-nested.ts         # Object generation (nested)
 │   ├── generate-object.ts                # Object generation (general)
 │   ├── hooks-callbacks.ts                # Hooks example (PreToolUse/PostToolUse)
+│   ├── images.ts                         # Image input with streaming mode
 │   ├── integration-test.ts               # Test suite
 │   ├── limitations.ts                    # Limitations walkthrough
 │   ├── long-running-tasks.ts             # Timeout handling
 │   ├── sdk-tools-callbacks.ts            # In-process SDK tools example
 │   ├── streaming.ts                      # Streaming demo (v5 pattern)
-│   └── tool-management.ts                # Tool access control
+│   ├── tool-management.ts                # Tool access control
+│   └── tool-streaming.ts                 # Tool streaming events demo
 ├── vitest.config.ts                      # Test configuration
 ├── tsup.config.ts                        # Build configuration
 ├── package.json                          # Package metadata
@@ -137,6 +146,7 @@ ai-sdk-provider-claude-code/
 The provider now meets all requirements for v5 community provider status:
 
 ### Technical Requirements ✅
+
 - Implements LanguageModelV2 specification
 - Follows provider factory pattern
 - Uses standard error handling
@@ -147,6 +157,7 @@ The provider now meets all requirements for v5 community provider status:
 - Uses v5 token naming convention
 
 ### Build Requirements ✅
+
 - Uses tsup for builds
 - Generates both CJS and ESM
 - Includes source maps
@@ -154,6 +165,7 @@ The provider now meets all requirements for v5 community provider status:
 - Published with beta tag
 
 ### Documentation Requirements ✅
+
 - Comprehensive README with version compatibility
 - CHANGELOG with version history
 - Extensive examples using v5 patterns
@@ -163,11 +175,13 @@ The provider now meets all requirements for v5 community provider status:
 ## Version Strategy
 
 - **0.x versions**: AI SDK v4 compatibility (maintained on `ai-sdk-v4` branch)
-- **1.x versions**: AI SDK v5 compatibility (maintained on `main` branch)
+- **1.x versions**: AI SDK v5 with `@anthropic-ai/claude-code` (maintained on `v1` branch)
+- **2.x versions**: AI SDK v5 with `@anthropic-ai/claude-agent-sdk` (maintained on `main` branch)
 
 ## Next Steps for Community Submission
 
 1. **Publish to npm with beta tag**
+
    ```bash
    npm publish --tag beta
    ```
@@ -182,16 +196,16 @@ The provider now meets all requirements for v5 community provider status:
 
 ## Example Community Provider MDX (v5)
 
-```mdx
+````mdx
 ---
 title: Claude Code (v5)
-description: Use Claude via the official Claude Code SDK with your Pro/Max subscription
+description: Use Claude via the official Claude Agent SDK with your Pro/Max subscription
 ---
 
 # Claude Code Provider (v5)
 
-[ben-vargas/ai-sdk-provider-claude-code](https://github.com/ben-vargas/ai-sdk-provider-claude-code) 
-is a community provider that uses the official [Claude Code SDK](https://www.npmjs.com/package/@anthropic-ai/claude-code) 
+[ben-vargas/ai-sdk-provider-claude-code](https://github.com/ben-vargas/ai-sdk-provider-claude-code)
+is a community provider that uses the official [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk)
 to provide language model support for the AI SDK v5.
 
 <Note type="warning">
@@ -216,12 +230,13 @@ The Claude Code provider is available in the `ai-sdk-provider-claude-code` modul
 
 ### Prerequisites
 
-Install and authenticate the Claude Code SDK:
+Install and authenticate the Claude CLI:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 claude login
 ```
+````
 
 ## Provider Instance
 
@@ -252,16 +267,18 @@ console.log(result.text);
 
 ### Model Capabilities
 
-| Model | Text Generation | Object Generation | Image Input | AI SDK Tool Calling | MCP Tools |
-|-------|----------------|-------------------|-------------|---------------------|-----------|
-| opus  | ✅ | ✅ | ❌ | ❌ | ✅ |
-| sonnet | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Model  | Text Generation | Object Generation | Image Input | AI SDK Tool Calling | MCP Tools |
+| ------ | --------------- | ----------------- | ----------- | ------------------- | --------- |
+| opus   | ✅              | ✅                | ✅\*        | ❌                  | ✅        |
+| sonnet | ✅              | ✅                | ✅\*        | ❌                  | ✅        |
+
+\*Image inputs supported via streaming mode with base64/data URLs. Remote HTTP(S) URLs not supported.
 
 <Note>
-  The provider uses the official Claude Code SDK. While the models support tool use, this provider 
-  doesn't implement the AI SDK's tool calling interface. However, you can configure MCP servers 
-  for tool functionality, and Claude can use built-in tools (Bash, Read, Write, etc.) through 
-  the Claude Code SDK.
+  The provider uses the official Claude Agent SDK. While the models support tool use, this provider
+  doesn't implement the AI SDK's tool calling interface. However, you can configure MCP servers
+  for tool functionality, and Claude can use built-in tools (Bash, Read, Write, etc.) through
+  the Claude Agent SDK.
 </Note>
 
 ## v5 Specific Features
@@ -285,4 +302,7 @@ const usage = await result.usage;
 ```
 
 See the [migration guide](https://github.com/ben-vargas/ai-sdk-provider-claude-code/blob/main/docs/ai-sdk-v5/V5_BREAKING_CHANGES.md) for details on upgrading from v0.x to v1.x-beta.
+
+```
+
 ```

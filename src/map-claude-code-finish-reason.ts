@@ -19,9 +19,7 @@ import type { LanguageModelV2FinishReason } from '@ai-sdk/provider';
  * - 'error_during_execution' -> 'error' (execution error)
  * - default -> 'stop' (unknown subtypes treated as normal completion)
  */
-export function mapClaudeCodeFinishReason(
-  subtype?: string
-): LanguageModelV2FinishReason {
+export function mapClaudeCodeFinishReason(subtype?: string): LanguageModelV2FinishReason {
   switch (subtype) {
     case 'success':
       return 'stop';
