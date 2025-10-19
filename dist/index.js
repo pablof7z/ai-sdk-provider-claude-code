@@ -768,6 +768,80 @@ function getClaudeCodeBuiltInTools() {
         allowed_domains: z2.array(z2.string()).optional(),
         blocked_domains: z2.array(z2.string()).optional()
       }))
+    },
+    {
+      type: "function",
+      name: "TodoWrite",
+      description: "Create and manage a task list",
+      parameters: jsonSchema(z2.object({
+        todos: z2.array(z2.object({
+          content: z2.string(),
+          status: z2.enum(["pending", "in_progress", "completed"]),
+          activeForm: z2.string()
+        }))
+      }))
+    },
+    {
+      type: "function",
+      name: "AskUserQuestion",
+      description: "Ask the user questions during execution",
+      parameters: jsonSchema(z2.object({
+        questions: z2.array(z2.object({
+          question: z2.string(),
+          header: z2.string(),
+          options: z2.array(z2.object({
+            label: z2.string(),
+            description: z2.string()
+          })),
+          multiSelect: z2.boolean()
+        })),
+        answers: z2.record(z2.string()).optional()
+      }))
+    },
+    {
+      type: "function",
+      name: "BashOutput",
+      description: "Retrieve output from a background bash shell",
+      parameters: jsonSchema(z2.object({
+        bash_id: z2.string().describe("ID of the background shell"),
+        filter: z2.string().optional().describe("Regex to filter output lines")
+      }))
+    },
+    {
+      type: "function",
+      name: "KillShell",
+      description: "Kill a running background bash shell",
+      parameters: jsonSchema(z2.object({
+        shell_id: z2.string().describe("ID of the shell to kill")
+      }))
+    },
+    {
+      type: "function",
+      name: "NotebookEdit",
+      description: "Edit a Jupyter notebook cell",
+      parameters: jsonSchema(z2.object({
+        notebook_path: z2.string().describe("Path to the notebook"),
+        new_source: z2.string().describe("New source for the cell"),
+        cell_id: z2.string().optional(),
+        cell_type: z2.enum(["code", "markdown"]).optional(),
+        edit_mode: z2.enum(["replace", "insert", "delete"]).optional()
+      }))
+    },
+    {
+      type: "function",
+      name: "Skill",
+      description: "Execute a skill within the conversation",
+      parameters: jsonSchema(z2.object({
+        command: z2.string().describe("Skill name to invoke")
+      }))
+    },
+    {
+      type: "function",
+      name: "SlashCommand",
+      description: "Execute a slash command",
+      parameters: jsonSchema(z2.object({
+        command: z2.string().describe("Slash command with arguments")
+      }))
     }
   ];
 }

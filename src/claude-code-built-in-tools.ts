@@ -116,5 +116,86 @@ export function getClaudeCodeBuiltInTools(): LanguageModelV2FunctionTool[] {
         blocked_domains: z.array(z.string()).optional(),
       })),
     },
+
+    {
+      type: 'function' as const,
+      name: 'TodoWrite',
+      description: 'Create and manage a task list',
+      parameters: jsonSchema(z.object({
+        todos: z.array(z.object({
+          content: z.string(),
+          status: z.enum(['pending', 'in_progress', 'completed']),
+          activeForm: z.string(),
+        })),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'AskUserQuestion',
+      description: 'Ask the user questions during execution',
+      parameters: jsonSchema(z.object({
+        questions: z.array(z.object({
+          question: z.string(),
+          header: z.string(),
+          options: z.array(z.object({
+            label: z.string(),
+            description: z.string(),
+          })),
+          multiSelect: z.boolean(),
+        })),
+        answers: z.record(z.string()).optional(),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'BashOutput',
+      description: 'Retrieve output from a background bash shell',
+      parameters: jsonSchema(z.object({
+        bash_id: z.string().describe('ID of the background shell'),
+        filter: z.string().optional().describe('Regex to filter output lines'),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'KillShell',
+      description: 'Kill a running background bash shell',
+      parameters: jsonSchema(z.object({
+        shell_id: z.string().describe('ID of the shell to kill'),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'NotebookEdit',
+      description: 'Edit a Jupyter notebook cell',
+      parameters: jsonSchema(z.object({
+        notebook_path: z.string().describe('Path to the notebook'),
+        new_source: z.string().describe('New source for the cell'),
+        cell_id: z.string().optional(),
+        cell_type: z.enum(['code', 'markdown']).optional(),
+        edit_mode: z.enum(['replace', 'insert', 'delete']).optional(),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'Skill',
+      description: 'Execute a skill within the conversation',
+      parameters: jsonSchema(z.object({
+        command: z.string().describe('Skill name to invoke'),
+      })),
+    },
+
+    {
+      type: 'function' as const,
+      name: 'SlashCommand',
+      description: 'Execute a slash command',
+      parameters: jsonSchema(z.object({
+        command: z.string().describe('Slash command with arguments'),
+      })),
+    },
   ];
 }

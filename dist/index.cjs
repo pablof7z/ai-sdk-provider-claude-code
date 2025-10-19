@@ -805,6 +805,80 @@ function getClaudeCodeBuiltInTools() {
         allowed_domains: import_zod2.z.array(import_zod2.z.string()).optional(),
         blocked_domains: import_zod2.z.array(import_zod2.z.string()).optional()
       }))
+    },
+    {
+      type: "function",
+      name: "TodoWrite",
+      description: "Create and manage a task list",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        todos: import_zod2.z.array(import_zod2.z.object({
+          content: import_zod2.z.string(),
+          status: import_zod2.z.enum(["pending", "in_progress", "completed"]),
+          activeForm: import_zod2.z.string()
+        }))
+      }))
+    },
+    {
+      type: "function",
+      name: "AskUserQuestion",
+      description: "Ask the user questions during execution",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        questions: import_zod2.z.array(import_zod2.z.object({
+          question: import_zod2.z.string(),
+          header: import_zod2.z.string(),
+          options: import_zod2.z.array(import_zod2.z.object({
+            label: import_zod2.z.string(),
+            description: import_zod2.z.string()
+          })),
+          multiSelect: import_zod2.z.boolean()
+        })),
+        answers: import_zod2.z.record(import_zod2.z.string()).optional()
+      }))
+    },
+    {
+      type: "function",
+      name: "BashOutput",
+      description: "Retrieve output from a background bash shell",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        bash_id: import_zod2.z.string().describe("ID of the background shell"),
+        filter: import_zod2.z.string().optional().describe("Regex to filter output lines")
+      }))
+    },
+    {
+      type: "function",
+      name: "KillShell",
+      description: "Kill a running background bash shell",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        shell_id: import_zod2.z.string().describe("ID of the shell to kill")
+      }))
+    },
+    {
+      type: "function",
+      name: "NotebookEdit",
+      description: "Edit a Jupyter notebook cell",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        notebook_path: import_zod2.z.string().describe("Path to the notebook"),
+        new_source: import_zod2.z.string().describe("New source for the cell"),
+        cell_id: import_zod2.z.string().optional(),
+        cell_type: import_zod2.z.enum(["code", "markdown"]).optional(),
+        edit_mode: import_zod2.z.enum(["replace", "insert", "delete"]).optional()
+      }))
+    },
+    {
+      type: "function",
+      name: "Skill",
+      description: "Execute a skill within the conversation",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        command: import_zod2.z.string().describe("Skill name to invoke")
+      }))
+    },
+    {
+      type: "function",
+      name: "SlashCommand",
+      description: "Execute a slash command",
+      parameters: (0, import_provider_utils.jsonSchema)(import_zod2.z.object({
+        command: import_zod2.z.string().describe("Slash command with arguments")
+      }))
     }
   ];
 }
