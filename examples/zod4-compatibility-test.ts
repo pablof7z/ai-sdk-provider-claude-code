@@ -7,7 +7,7 @@
  * with Zod v4.x. It tests various Zod 4 features and schema patterns.
  *
  * Changes in Zod 4:
- * - Function schemas: z.function().args().returns() -> z.function(args, returns)
+ * - Function schemas: z.function().args().returns() -> z.function({ input, output })
  * - Better type inference
  * - Improved error messages
  * - New validation features
@@ -273,7 +273,9 @@ async function main() {
     console.log('🎉 All Zod 4 compatibility tests passed!\n');
     console.log('✅ ai-sdk-provider-claude-code is fully compatible with Zod 4\n');
     console.log('📝 Key changes in Zod 4:');
-    console.log('   - Function schemas: z.function(args, returns) instead of .args().returns()');
+    console.log(
+      '   - Function schemas: z.function({ input: [...], output: ... }) instead of .args().returns()'
+    );
     console.log('   - Better TypeScript inference');
     console.log('   - Improved error messages');
     console.log('   - All other Zod features work as expected\n');
