@@ -15,6 +15,7 @@ import { createAPICallError, createAuthenticationError, createTimeoutError } fro
 import { mapClaudeCodeFinishReason } from './map-claude-code-finish-reason.js';
 import { validateModelId, validatePrompt, validateSessionId } from './validation.js';
 import { getLogger } from './logger.js';
+import { getClaudeCodeBuiltInTools } from './claude-code-built-in-tools.js';
 
 import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -341,6 +342,31 @@ export class ClaudeCodeLanguageModel implements LanguageModelV2 {
 
   get provider(): string {
     return 'claude-code';
+  }
+
+  /**
+   * Built-in tools available for this model.
+   * Pass these to streamText/generateText to avoid tool validation errors:
+   *
+   * @example
+   * ```typescript
+   * const model = claudeCode('haiku');
+   * streamText({
+   *   model,
+   *   tools: model.tools, // or { ...model.tools, ...myCustomTools }
+   *   prompt: '...'
+   * });
+   * ```
+   */
+  get tools() {
+    const builtInTools = getClaudeCodeBuiltInTools();
+    return builtInTools.reduce(
+      (acc, tool) => {
+        acc[tool.name] = tool;
+        return acc;
+      },
+      {} as Record<string, typeof builtInTools[number]>
+    );
   }
 
   private getModel(): string {
