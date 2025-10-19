@@ -28,8 +28,10 @@ async function testToolManagement() {
   });
 
   try {
+    const model = claude('haiku');
     const result2 = streamText({
-      model: claude('haiku'),
+      model,
+      tools: model.tools, // Include built-in tools to avoid validation errors
       prompt: 'Use the date command; give me the time and nothing else. If you get confused, apologize and say you are confused.',
       stopWhen: stepCountIs(5),
       onChunk: ({chunk}) => {
