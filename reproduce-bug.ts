@@ -1,11 +1,13 @@
-import { stepCountIs } from 'ai';
-import { createClaudeCode, streamText } from './dist/index.js';
+import { streamText, stepCountIs } from 'ai';
+import { createClaudeCode } from './dist/index.js';
 
 async function demonstrateBug() {
   const claude = createClaudeCode();
+  const model = claude('haiku');
 
   const result = streamText({
-    model: claude('haiku'),
+    model,
+    tools: model.tools, // <-- Pass built-in tools from the model
     prompt: 'Use the date command to get the current time.',
     stopWhen: stepCountIs(5),
     onChunk: ({ chunk }) => {
