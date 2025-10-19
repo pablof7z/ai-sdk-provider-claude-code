@@ -66,12 +66,15 @@ async function test2_functionSchemas() {
   console.log('2️⃣  Zod 4 Function Schemas (New API)\n');
 
   // In Zod 4, function schemas use the new API:
-  // z.function(args, returns) instead of z.function().args().returns()
-  // @ts-expect-error - Demonstrating Zod 4 API (type definitions may vary)
-  const callbackSchema = z.function(z.tuple([z.string()]), z.void());
+  // z.function({ input, output }) instead of z.function().args().returns()
+  // Using Zod 4 function schema API
+  const callbackSchema = z.function({
+    input: z.tuple([z.string()]),
+    output: z.void(),
+  });
 
   console.log('Function schema created with new Zod 4 API:');
-  console.log('z.function(z.tuple([z.string()]), z.void())');
+  console.log('z.function({ input: z.tuple([z.string()]), output: z.void() })');
 
   // Test the schema
   const testFn = (msg: string) => console.log(msg);
