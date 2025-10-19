@@ -26,14 +26,17 @@ async function main() {
   const workspaceRoot = resolve(exampleRoot, '..');
   const readmePath = resolve(workspaceRoot, 'README.md');
 
+  const model = claudeCode('haiku', {
+    streamingInput: 'always',
+    canUseTool: allowAllTools,
+    permissionMode: 'bypassPermissions',
+    allowedTools: ['Bash', 'Read'],
+    cwd: workspaceRoot,
+  });
+
   const result = streamText({
-    model: claudeCode('haiku', {
-      streamingInput: 'always',
-      canUseTool: allowAllTools,
-      permissionMode: 'bypassPermissions',
-      allowedTools: ['Bash', 'Read'],
-      cwd: workspaceRoot,
-    }),
+    model,
+    tools: model.tools, // Include built-in tools to avoid validation errors
     prompt: [
       {
         role: 'user',
