@@ -115,7 +115,7 @@ async function example3_stringPatterns() {
         .string()
         .min(8)
         .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,
           'Must contain uppercase, lowercase, number, and special character'
         ),
       phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'E.164 phone format'),

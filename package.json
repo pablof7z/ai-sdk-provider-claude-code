@@ -1,6 +1,6 @@
 {
   "name": "ai-sdk-provider-claude-code",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "AI SDK v5 provider for Claude via Claude Agent SDK (use Pro/Max subscription)",
   "keywords": [
     "ai-sdk",
@@ -66,6 +66,7 @@
     "example:object:constraints": "npm run build && npx tsx examples/generate-object-constraints.ts",
     "example:tools": "npm run build && npx tsx examples/tool-management.ts",
     "example:timeout": "npm run build && npx tsx examples/long-running-tasks.ts",
+    "example:zod4": "npm run build && npx tsx examples/zod4-compatibility-test.ts",
     "example:all": "npm run build && npm run example:basic && npm run example:streaming && npm run example:conversation && npm run example:config && npm run example:object:basic && npm run example:object:nested && npm run example:object:constraints && npm run example:tools && npm run example:timeout"
   },
   "dependencies": {
@@ -88,7 +89,7 @@
     "tsup": "8.5.0",
     "typescript": "5.6.3",
     "vitest": "3.2.4",
-    "zod": "^3.25.76"
+    "zod": "^4.1.12"
   },
   "peerDependencies": {
     "zod": "^3.0.0 || ^4.0.0"

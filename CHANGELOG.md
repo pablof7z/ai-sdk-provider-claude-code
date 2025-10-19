@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] - 2025-10-19
+
+### Added
+
+- Full support for Zod 4.x while maintaining backward compatibility with Zod 3.x
+- New comprehensive Zod 4 compatibility test suite (`examples/zod4-compatibility-test.ts`)
+- Added `example:zod4` npm script to run Zod 4 compatibility tests
+
+### Changed
+
+- Updated function schema validation to use version-agnostic `refine()` approach for maximum compatibility
+- Upgraded development dependency from Zod 3.25.76 to Zod 4.1.12
+- Updated README.md with Zod compatibility documentation
+
+### Fixed
+
+- Fixed Zod 4 compatibility issue in `claudeCodeSettingsSchema` validation
+- Fixed overly restrictive password regex in `generate-object-constraints.ts` example
+- Package now works seamlessly with both Zod 3.x and Zod 4.x installations
+
 ## [2.0.3] - 2025-10-16
 
 ### Added

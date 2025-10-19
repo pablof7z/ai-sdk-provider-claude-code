@@ -38,17 +38,28 @@ npm install ai-sdk-provider-claude-code@v1-claude-code-sdk ai
 
 **For AI SDK v4 (legacy):**
 
-````bash
+```bash
 npm install ai-sdk-provider-claude-code@ai-sdk-v4 ai@^4.3.16
 # or use specific version: npm install ai-sdk-provider-claude-code@^0.2.2
+```
+
+## Zod Compatibility
+
+This package supports both **Zod 3** and **Zod 4**:
+
+- ✅ **Zod 4** (Recommended): `npm install zod@^4.0.0`
+- ✅ **Zod 3** (Still supported): `npm install zod@^3.0.0`
+
+The package uses Zod for schema validation and works seamlessly with both versions. All 302 tests pass with both Zod 3 and Zod 4. See `examples/zod4-compatibility-test.ts` for comprehensive compatibility tests.
 
 ## Installation
 
 ### 1. Install and authenticate the CLI
+
 ```bash
 npm install -g @anthropic-ai/claude-code
 claude login
-````
+```
 
 ### 2. Add the provider
 

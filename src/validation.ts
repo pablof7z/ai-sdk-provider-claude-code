@@ -129,7 +129,12 @@ export const claudeCodeSettingsSchema = z
     includePartialMessages: z.boolean().optional(),
     fallbackModel: z.string().optional(),
     forkSession: z.boolean().optional(),
-    stderr: z.function().args(z.string()).returns(z.void()).optional(),
+    stderr: z
+      .any()
+      .refine((val) => val === undefined || typeof val === 'function', {
+        message: 'stderr must be a function',
+      })
+      .optional(),
     strictMcpConfig: z.boolean().optional(),
     extraArgs: z.record(z.string(), z.union([z.string(), z.null()])).optional(),
   })
